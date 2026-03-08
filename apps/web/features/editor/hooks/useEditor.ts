@@ -1,13 +1,12 @@
 import { useState } from "react";
 
 export function useEditor() {
-  const [code, setCode] = useState(`function greet(name: string) {
-  return "Hello " + name;
-}
-
-console.log(greet("VibeCoder"));`);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
   return {
+    activeFile,
+    setActiveFile,
     code,
     setCode,
   };
