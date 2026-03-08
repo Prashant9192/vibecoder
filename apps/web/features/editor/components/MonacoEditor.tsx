@@ -1,19 +1,19 @@
 "use client";
 
 import Editor from "@monaco-editor/react";
+import { useEditor } from "../hooks/useEditor";
 
 export default function MonacoEditor() {
+  const { code, setCode } = useEditor();
+
   return (
     <div className="h-full w-full">
       <Editor
         height="100%"
-        defaultLanguage="typescript"
+        language="typescript"
         theme="vs-dark"
-        defaultValue={`function greet(name: string) {
-  return "Hello " + name;
-}
-
-console.log(greet("VibeCoder"));`}
+        value={code}
+        onChange={(value) => setCode(value || "")}
         options={{
           fontSize: 14,
           minimap: { enabled: false },
