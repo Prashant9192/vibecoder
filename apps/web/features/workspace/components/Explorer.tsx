@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useFileSystem } from "@/features/editor/hooks/useFileSystem";
+import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { FilePlus, Pencil, Trash } from "lucide-react";
 
 export default function Explorer() {
-  const { files: fileSystemFiles, addFile, renameFile, deleteFile } = useFileSystem();
+  const { files: fileSystemFiles, addFile, renameFile, deleteFile } = useFileSystemContext();
   const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 

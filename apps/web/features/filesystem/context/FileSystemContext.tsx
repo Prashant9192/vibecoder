@@ -1,4 +1,6 @@
-import { useState } from "react";
+"use client";
+
+import React, { createContext, useContext, useState } from "react";
 
 export type FileNode = {
     name: string;
@@ -6,7 +8,16 @@ export type FileNode = {
     children?: FileNode[];
 };
 
-export function useFileSystem() {
+interface FileSystemContextType {
+    files: FileNode[];
+    addFile: (fileName: string, folderName?: string) => void;
+    renameFile: (oldName: string, newName: string, folderName?: string) => void;
+    deleteFile: (fileName: string, folderName?: string) => void;
+}
+
+const FileSystemContext = createContext<FileSystemContextType | undefined>(undefined);
+
+export function FileSystemProvider({ children }: { children: React.ReactNode }) {
     const [files, setFiles] = useState<FileNode[]>([
         {
             name: "src",
@@ -81,11 +92,24 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
-    return {
-        files,
-        setFiles,
-        addFile,
-        renameFile,
-        deleteFile,
-    };
+    return (
+        <FileSystemContext.Provider
+            value={{
+                files,
+                addFile,
+                renameFile,
+                deleteFile,
+            }}
+        >
+            {children}
+        </FileSystemContext.Provider>
+    );
+}
+
+export function useFileSystemContext() {
+    const context = useContext(FileSystemContext);
+    if (context === undefined) {
+        throw new Error("useFileSystemContext must be used within a FileSystemProvider");
+    }
+    return context;
 }
