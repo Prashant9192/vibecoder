@@ -47,9 +47,30 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
+    const renameFile = (oldName: string, newName: string, folderName: string = "src") => {
+        setFiles(prevFiles => {
+            return prevFiles.map(folder => {
+                if (folder.name === folderName) {
+                    // Check if new name already exists
+                    if (folder.children?.some(f => f.name === newName)) {
+                        return folder;
+                    }
+                    return {
+                        ...folder,
+                        children: folder.children?.map(f =>
+                            f.name === oldName ? { ...f, name: newName } : f
+                        )
+                    };
+                }
+                return folder;
+            });
+        });
+    };
+
     return {
         files,
         setFiles,
         addFile,
+        renameFile,
     };
 }

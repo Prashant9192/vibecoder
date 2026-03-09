@@ -5,8 +5,8 @@ import { useFileSystem } from "@/features/editor/hooks/useFileSystem";
 import { useEditor } from "@/features/editor/context/EditorContext";
 
 export default function Explorer() {
-  const { files: fileSystemFiles, addFile } = useFileSystem();
-  const { setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
+  const { files: fileSystemFiles, addFile, renameFile } = useFileSystem();
+  const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const openFile = (file: any) => {
@@ -30,6 +30,35 @@ export default function Explorer() {
       const name = fileName.trim();
       addFile(name, "src");
       openFile({ name, content: "" });
+    }
+  };
+
+  const handleRename = (e: React.MouseEvent, folderName: string, oldName: string) => {
+    e.stopPropagation();
+    const newName = prompt(`Rename ${oldName} to:`, oldName);
+
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+      const trimName = newName.trim();
+      renameFile(oldName, trimName, folderName);
+
+      // Update active tabs mapping if file is currently open
+      if (openFiles.includes(oldName)) {
+        const newOpenTabs = openFiles.map(f => f === oldName ? trimName : f);
+        setOpenFiles(newOpenTabs);
+      }
+
+      // Re-map the editor code dictionary safely
+      if (files[oldName] !== undefined) {
+        const updatedFiles = { ...files };
+        updatedFiles[trimName] = updatedFiles[oldName];
+        delete updatedFiles[oldName];
+        setFiles(updatedFiles);
+      }
+
+      // Re-claim focused state if it was currently rendered
+      if (activeFile === oldName) {
+        setActiveFile(trimName);
+      }
     }
   };
 
@@ -77,11 +106,24 @@ export default function Explorer() {
                 {folder.children?.map((file) => (
                   <li
                     key={file.name}
-                    className="flex items-center gap-2 px-1 py-1 pl-4 cursor-pointer transition-colors hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded"
+                    className="group flex items-center justify-between px-1 py-1 pl-4 cursor-pointer transition-colors hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded"
                     onClick={() => openFile(file)}
                   >
-                    <span>📄</span>
-                    <span>{file.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span>📄</span>
+                      <span>{file.name}</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleRename(e, folder.name, file.name)}
+                      className="opacity-0 group-hover:opacity-100 text-[#888888] hover:text-[#E5E5E5] transition-opacity px-1"
+                      title="Rename"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                      </svg>
+                    </button>
                   </li>
                 ))}
               </ul>
