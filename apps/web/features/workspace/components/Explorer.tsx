@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
+import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
-import { FilePlus, Pencil, Trash } from "lucide-react";
+import { FilePlus, FolderPlus, Pencil, Trash } from "lucide-react";
 
 export default function Explorer() {
-  const { files: fileSystemFiles, addFile, renameFile, deleteFile } = useFileSystemContext();
+  const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile } = useFileSystemContext();
   const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -25,12 +25,21 @@ export default function Explorer() {
     }
   };
 
-  const handleNewFile = () => {
-    const fileName = prompt("Enter new file name:");
+  const handleNewFile = (parentFolder: string = "src") => {
+    const fileName = prompt(`Enter new file name in ${parentFolder}:`);
     if (fileName && fileName.trim()) {
       const name = fileName.trim();
-      addFile(name, "src");
-      openFile({ name, content: "" });
+      addFile(name, parentFolder);
+      openFile({ name, type: "file", content: "" });
+    }
+  };
+
+  const handleNewFolder = (parentFolder: string = "src") => {
+    const folderName = prompt(`Enter new folder name in ${parentFolder}:`);
+    if (folderName && folderName.trim()) {
+      createFolder(folderName.trim(), parentFolder);
+      // Automatically expand parent whenever a child is added
+      setExpanded(prev => ({ ...prev, [parentFolder]: true }));
     }
   };
 
@@ -47,14 +56,16 @@ export default function Explorer() {
         setOpenFiles(newOpenTabs);
       }
 
+      const activeWasRenamed = activeFile === oldName;
+
       if (files[oldName] !== undefined) {
-        const updatedFiles = { ...files };
-        updatedFiles[trimName] = updatedFiles[oldName];
-        delete updatedFiles[oldName];
-        setFiles(updatedFiles);
+        const updated = { ...files };
+        updated[trimName] = updated[oldName];
+        delete updated[oldName];
+        setFiles(updated);
       }
 
-      if (activeFile === oldName) {
+      if (activeWasRenamed) {
         setActiveFile(trimName);
       }
     }
@@ -67,7 +78,6 @@ export default function Explorer() {
     if (confirmDelete) {
       deleteFile(fileName, folderName);
 
-      // Clean up open tabs and fallback active rendering naturally
       const newOpenFiles = openFiles.filter(f => f !== fileName);
       setOpenFiles(newOpenFiles);
 
@@ -81,11 +91,10 @@ export default function Explorer() {
         }
       }
 
-      // Cleanup local state code cache dict
       if (files[fileName] !== undefined) {
-        const updatedFiles = { ...files };
-        delete updatedFiles[fileName];
-        setFiles(updatedFiles);
+        const updated = { ...files };
+        delete updated[fileName];
+        setFiles(updated);
       }
     }
   };
@@ -97,69 +106,110 @@ export default function Explorer() {
     }));
   };
 
+  const renderNode = (node: FileNode, parentName: string = "") => {
+    if (node.type === "file") {
+      return (
+        <li
+          key={node.name}
+          className="group flex items-stretch justify-between px-1 py-1 pl-4 cursor-pointer transition-colors hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded"
+          onClick={() => openFile(node)}
+        >
+          <div className="flex items-center gap-2">
+            <span>📄</span>
+            <span>{node.name}</span>
+          </div>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => handleRename(e, parentName, node.name)}
+              className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+              title="Rename"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={(e) => handleDelete(e, parentName, node.name)}
+              className="text-[#888888] hover:text-[#FF0000] transition-colors px-1"
+              title="Delete"
+            >
+              <Trash size={14} />
+            </button>
+          </div>
+        </li>
+      );
+    } else if (node.type === "folder") {
+      const isExpanded = expanded[node.name] ?? true;
+
+      return (
+        <div key={node.name} className="mb-1">
+          <div
+            className="group flex items-center justify-between px-1 py-1 cursor-pointer text-[#E5E5E5] hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded transition-colors"
+            onClick={() => toggleFolder(node.name)}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] w-3 text-center">{isExpanded ? '▼' : '▶'}</span>
+              <span className="text-sm">📁</span>
+              <span className="text-sm">{node.name}</span>
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNewFile(node.name);
+                }}
+                className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+                title="New File inside folder"
+              >
+                <FilePlus size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNewFolder(node.name);
+                }}
+                className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+                title="New Folder inside folder"
+              >
+                <FolderPlus size={14} />
+              </button>
+            </div>
+          </div>
+
+          {isExpanded && node.children && (
+            <ul className="ml-4 flex flex-col text-sm text-[#888888]">
+              {node.children.map((child) => renderNode(child, node.name))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="w-64 bg-[#0A0A0A] border-r border-[#1F1F1F] p-4 overflow-y-auto">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-[#E5E5E5]">Explorer</h2>
-        <button
-          onClick={handleNewFile}
-          className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
-          title="New File"
-        >
-          <FilePlus size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleNewFile("src")}
+            className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
+            title="New File"
+          >
+            <FilePlus size={16} />
+          </button>
+          <button
+            onClick={() => handleNewFolder("src")}
+            className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
+            title="New Folder"
+          >
+            <FolderPlus size={16} />
+          </button>
+        </div>
       </div>
 
-      {fileSystemFiles.map((folder) => {
-        const isExpanded = expanded[folder.name] ?? true;
-
-        return (
-          <div key={folder.name} className="mb-1">
-            <div
-              className="flex items-center gap-1.5 px-1 py-1 cursor-pointer text-[#E5E5E5] hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded transition-colors"
-              onClick={() => toggleFolder(folder.name)}
-            >
-              <span className="text-[10px] w-3 text-center">{isExpanded ? '▼' : '▶'}</span>
-              <span className="text-sm">📁</span>
-              <span className="text-sm">{folder.name}</span>
-            </div>
-
-            {isExpanded && (
-              <ul className="ml-4 flex flex-col text-sm text-[#888888]">
-                {folder.children?.map((file) => (
-                  <li
-                    key={file.name}
-                    className="group flex items-stretch justify-between px-1 py-1 pl-4 cursor-pointer transition-colors hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded"
-                    onClick={() => openFile(file)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>📄</span>
-                      <span>{file.name}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => handleRename(e, folder.name, file.name)}
-                        className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
-                        title="Rename"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(e, folder.name, file.name)}
-                        className="text-[#888888] hover:text-[#FF0000] transition-colors px-1"
-                        title="Delete"
-                      >
-                        <Trash size={14} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        );
-      })}
+      <div className="flex flex-col">
+        {fileSystemFiles.map((node) => renderNode(node))}
+      </div>
     </div>
   );
 }
