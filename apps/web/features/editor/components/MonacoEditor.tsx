@@ -1,10 +1,12 @@
 "use client";
 
 import Editor from "@monaco-editor/react";
-import { useEditor } from "../hooks/useEditor";
+import { useEditor } from "../context/EditorContext";
 
 export default function MonacoEditor() {
-    const { code, setCode } = useEditor();
+    const { activeFile, files, setFiles } = useEditor();
+
+    if (!activeFile) return null;
 
     return (
         <div className="h-full w-full">
@@ -12,8 +14,11 @@ export default function MonacoEditor() {
                 height="100%"
                 language="typescript"
                 theme="vs-dark"
-                value={code}
-                onChange={(value) => setCode(value || "")}
+                value={files[activeFile] || ""}
+                onChange={(value) => setFiles({
+                    ...files,
+                    [activeFile]: value || ""
+                })}
                 options={{
                     fontSize: 14,
                     minimap: { enabled: false },
