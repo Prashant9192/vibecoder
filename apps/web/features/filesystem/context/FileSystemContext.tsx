@@ -15,6 +15,7 @@ interface FileSystemContextType {
     createFolder: (folderName: string, parentFolderName?: string) => void;
     renameFile: (oldName: string, newName: string, folderName?: string) => void;
     deleteFile: (fileName: string, folderName?: string) => void;
+    moveFile: (fileName: string, oldFolderName: string, newFolderName: string) => void;
 }
 
 const FileSystemContext = createContext<FileSystemContextType | undefined>(undefined);
@@ -98,6 +99,53 @@ console.log(greet("VibeCoder"));`,
         }));
     };
 
+    const moveFile = (fileName: string, oldFolderName: string, newFolderName: string) => {
+        setFiles(prevFiles => {
+            let fileToMove: FileNode | undefined;
+
+            const removeFileFromTree = (nodes: FileNode[]): FileNode[] => {
+                return nodes.map(node => {
+                    if (node.type === "folder" && node.name === oldFolderName) {
+                        const target = node.children?.find(f => f.name === fileName);
+                        if (target) {
+                            fileToMove = target;
+                            return {
+                                ...node,
+                                children: node.children?.filter(f => f.name !== fileName)
+                            };
+                        }
+                    }
+                    if (node.type === "folder" && node.children) {
+                        return { ...node, children: removeFileFromTree(node.children) };
+                    }
+                    return node;
+                });
+            };
+
+            const afterRemoval = removeFileFromTree(prevFiles);
+
+            if (!fileToMove) return prevFiles;
+
+            const addFileToTree = (nodes: FileNode[]): FileNode[] => {
+                return nodes.map(node => {
+                    if (node.type === "folder" && node.name === newFolderName) {
+                        if (node.children?.some(f => f.name === fileName)) return node;
+                        return {
+                            ...node,
+                            children: [...(node.children || []), fileToMove!]
+                        };
+                    }
+                    if (node.type === "folder" && node.children) {
+                        return { ...node, children: addFileToTree(node.children) };
+                    }
+                    return node;
+                });
+            };
+
+            return addFileToTree(afterRemoval);
+        });
+    };
+
     return (
         <FileSystemContext.Provider
             value={{
@@ -106,6 +154,7 @@ console.log(greet("VibeCoder"));`,
                 createFolder,
                 renameFile,
                 deleteFile,
+                moveFile,
             }}
         >
             {children}

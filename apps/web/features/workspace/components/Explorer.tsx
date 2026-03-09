@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
-import { FilePlus, FolderPlus, Pencil, Trash } from "lucide-react";
+import { FilePlus, FolderPlus, FolderInput, Pencil, Trash } from "lucide-react";
 
 export default function Explorer() {
-  const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile } = useFileSystemContext();
+  const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
   const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -99,6 +99,17 @@ export default function Explorer() {
     }
   };
 
+  const handleMove = (e: React.MouseEvent, oldFolderName: string, fileName: string) => {
+    e.stopPropagation();
+    const newFolderName = prompt(`Move ${fileName} to folder:`, oldFolderName);
+
+    if (newFolderName && newFolderName.trim() && newFolderName.trim() !== oldFolderName) {
+      moveFile(fileName, oldFolderName, newFolderName.trim());
+      // Expand target folder automatically to show moved file
+      setExpanded(prev => ({ ...prev, [newFolderName.trim()]: true }));
+    }
+  };
+
   const toggleFolder = (folderName: string) => {
     setExpanded((prev) => ({
       ...prev,
@@ -120,6 +131,13 @@ export default function Explorer() {
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => handleMove(e, parentName, node.name)}
+              className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+              title="Move"
+            >
+              <FolderInput size={14} />
+            </button>
             <button
               onClick={(e) => handleRename(e, parentName, node.name)}
               className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
