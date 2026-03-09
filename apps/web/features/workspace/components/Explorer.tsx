@@ -5,7 +5,7 @@ import { useFileSystem } from "@/features/editor/hooks/useFileSystem";
 import { useEditor } from "@/features/editor/context/EditorContext";
 
 export default function Explorer() {
-  const { files: fileSystemFiles } = useFileSystem();
+  const { files: fileSystemFiles, addFile } = useFileSystem();
   const { setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -24,6 +24,15 @@ export default function Explorer() {
     }
   };
 
+  const handleNewFile = () => {
+    const fileName = prompt("Enter new file name:");
+    if (fileName && fileName.trim()) {
+      const name = fileName.trim();
+      addFile(name, "src");
+      openFile({ name, content: "" });
+    }
+  };
+
   const toggleFolder = (folderName: string) => {
     setExpanded((prev) => ({
       ...prev,
@@ -33,7 +42,21 @@ export default function Explorer() {
 
   return (
     <div className="w-64 bg-[#0A0A0A] border-r border-[#1F1F1F] p-4 overflow-y-auto">
-      <h2 className="text-sm font-semibold mb-3 text-[#E5E5E5]">Explorer</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-[#E5E5E5]">Explorer</h2>
+        <button
+          onClick={handleNewFile}
+          className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
+          title="New File"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+        </button>
+      </div>
 
       {fileSystemFiles.map((folder) => {
         const isExpanded = expanded[folder.name] ?? true;

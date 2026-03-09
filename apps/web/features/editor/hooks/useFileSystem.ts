@@ -29,8 +29,27 @@ console.log(greet("VibeCoder"));`,
         },
     ]);
 
+    const addFile = (fileName: string, folderName: string = "src") => {
+        setFiles(prevFiles => {
+            return prevFiles.map(folder => {
+                if (folder.name === folderName) {
+                    // Check if file already exists
+                    if (folder.children?.some(f => f.name === fileName)) {
+                        return folder;
+                    }
+                    return {
+                        ...folder,
+                        children: [...(folder.children || []), { name: fileName, content: "" }]
+                    };
+                }
+                return folder;
+            });
+        });
+    };
+
     return {
         files,
         setFiles,
+        addFile,
     };
 }
