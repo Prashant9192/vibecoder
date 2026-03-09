@@ -67,10 +67,25 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
+    const deleteFile = (fileName: string, folderName: string = "src") => {
+        setFiles(prevFiles => {
+            return prevFiles.map(folder => {
+                if (folder.name === folderName) {
+                    return {
+                        ...folder,
+                        children: folder.children?.filter(f => f.name !== fileName)
+                    };
+                }
+                return folder;
+            });
+        });
+    };
+
     return {
         files,
         setFiles,
         addFile,
         renameFile,
+        deleteFile,
     };
 }
