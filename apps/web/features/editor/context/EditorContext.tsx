@@ -6,9 +6,13 @@ interface EditorContextType {
     activeFile: string | null;
     openFiles: string[];
     files: Record<string, string>;
+    unsavedFiles: string[];
+    editorTheme: "vs-dark" | "vs-light";
     setActiveFile: (file: string | null) => void;
     setOpenFiles: (files: string[]) => void;
     setFiles: (files: Record<string, string>) => void;
+    setUnsavedFiles: (files: string[]) => void;
+    setEditorTheme: (theme: "vs-dark" | "vs-light") => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -17,6 +21,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const [activeFile, setActiveFile] = useState<string | null>(null);
     const [openFiles, setOpenFiles] = useState<string[]>([]);
     const [files, setFiles] = useState<Record<string, string>>({});
+    const [unsavedFiles, setUnsavedFiles] = useState<string[]>([]);
+    const [editorTheme, setEditorTheme] = useState<"vs-dark" | "vs-light">("vs-dark");
 
     return (
         <EditorContext.Provider
@@ -24,9 +30,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
                 activeFile,
                 openFiles,
                 files,
+                unsavedFiles,
+                editorTheme,
                 setActiveFile,
                 setOpenFiles,
                 setFiles,
+                setUnsavedFiles,
+                setEditorTheme,
             }}
         >
             {children}

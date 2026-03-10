@@ -17,6 +17,7 @@ interface FileSystemContextType {
     renameFile: (path: string, newName: string) => void;
     deleteFile: (path: string) => void;
     moveFile: (sourcePath: string, targetParentPath: string) => void;
+    saveFile: (path: string, content: string) => void;
 }
 
 const FileSystemContext = createContext<FileSystemContextType | undefined>(undefined);
@@ -170,12 +171,28 @@ console.log(greet("VibeCoder"));`,
                 });
             };
 
-             // root target catch
             if (targetParentPath === "") {
                return [...afterRemoval, updatedFileToMove];
             }
 
             return addFileToTree(afterRemoval);
+        });
+    };
+
+    const saveFile = (path: string, content: string) => {
+        setFiles(prevFiles => {
+            const updateInTree = (nodes: FileNode[]): FileNode[] => {
+                return nodes.map(node => {
+                    if (node.path === path && node.type === "file") {
+                        return { ...node, content };
+                    }
+                    if (node.type === "folder" && node.children) {
+                        return { ...node, children: updateInTree(node.children) };
+                    }
+                    return node;
+                });
+            };
+            return updateInTree(prevFiles);
         });
     };
 
@@ -188,6 +205,7 @@ console.log(greet("VibeCoder"));`,
                 renameFile,
                 deleteFile,
                 moveFile,
+                saveFile,
             }}
         >
             {children}

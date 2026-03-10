@@ -3,7 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
-import { FilePlus, FolderPlus, FolderInput, Pencil, Trash, ChevronRight, ChevronDown, Folder, FolderOpen, FileCode } from "lucide-react";
+import { FilePlus, FolderPlus, FolderInput, Pencil, Trash, ChevronRight, ChevronDown, Folder, FolderOpen, FileCode, FileJson, FileText, File } from "lucide-react";
+
+const getFileIcon = (name: string) => {
+  if (name.endsWith('.ts') || name.endsWith('.tsx')) return <FileCode size={14} className="flex-shrink-0 text-[#3178C6]" />;
+  if (name.endsWith('.js') || name.endsWith('.jsx')) return <FileCode size={14} className="flex-shrink-0 text-[#F7DF1E]" />;
+  if (name.endsWith('.json')) return <FileJson size={14} className="flex-shrink-0 text-[#CBCB41]" />;
+  if (name.endsWith('.css')) return <FileCode size={14} className="flex-shrink-0 text-[#2965F1]" />;
+  if (name.endsWith('.md')) return <FileText size={14} className="flex-shrink-0 text-[#E5E5E5]" />;
+  return <File size={14} className="flex-shrink-0 text-[#888888]" />;
+};
 
 export default function Explorer() {
   const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
@@ -31,6 +40,23 @@ export default function Explorer() {
       }, 0);
     }
   }, [creatingNode, renamingNode]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // F2 Rename Shortcut
+      if (e.key === 'F2' && activeFile && !renamingNode) {
+        e.preventDefault();
+        const initialName = activeFile.split('/').pop();
+        if (initialName) {
+          setRenamingNode({ path: activeFile, initialName });
+          setInputValue(initialName);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [activeFile, renamingNode, fileSystemFiles]);
 
   const openFile = (file: any) => {
     if (!files[file.path]) {
@@ -76,8 +102,8 @@ export default function Explorer() {
     }
   };
 
-  const startRenaming = (e: React.MouseEvent, nodePath: string, initialName: string) => {
-    e.stopPropagation();
+  const startRenaming = (e: React.MouseEvent | KeyboardEvent, nodePath: string, initialName: string) => {
+    if (e.stopPropagation) e.stopPropagation();
     setRenamingNode({ path: nodePath, initialName });
     setInputValue(initialName);
   };
@@ -125,7 +151,7 @@ export default function Explorer() {
     if (!creatingNode || creatingNode.parentPath !== parentPath) return null;
     return (
       <div className="flex items-center gap-1.5 px-1 py-1 pl-4 text-[13px] bg-[#1A1A1A] border border-[#007FD4] rounded-sm min-w-0 h-7">
-        {creatingNode.type === 'file' ? <FileCode size={14} className="flex-shrink-0 text-[#888888]" /> : <Folder size={14} className="flex-shrink-0 text-[#888888]" />}
+        {creatingNode.type === 'file' ? getFileIcon(inputValue || "new.ts") : <Folder size={14} className="flex-shrink-0 text-[#888888]" />}
         <input
           ref={inputRef}
           value={inputValue}
@@ -189,9 +215,7 @@ export default function Explorer() {
     if (renamingNode && renamingNode.path === node.path) {
       return (
         <div key={node.path} className={`flex items-center gap-1.5 px-1 py-1 ${node.type === 'file' ? 'pl-4' : 'pl-0.5'} text-[13px] bg-[#1A1A1A] border border-[#007FD4] rounded-sm min-w-0 h-7`}>
-          {node.type === 'file' ? (
-            <FileCode size={14} className="flex-shrink-0 text-[#888888]" />
-          ) : (
+          {node.type === 'file' ? getFileIcon(node.name) : (
             <>
               <ChevronRight size={14} className="text-[#888888] flex-shrink-0 opacity-0" />
               <Folder size={14} className="flex-shrink-0 text-[#888888]" />
@@ -221,7 +245,7 @@ export default function Explorer() {
           onClick={() => openFile(node)}
         >
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <FileCode size={14} className="flex-shrink-0" />
+            {getFileIcon(node.name)}
             <span className="truncate leading-none pt-0.5">{node.name}</span>
           </div>
 
