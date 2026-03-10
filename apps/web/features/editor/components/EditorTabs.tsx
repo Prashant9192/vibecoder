@@ -76,7 +76,7 @@ export default function EditorTabs() {
   };
 
   return (
-    <div className="flex flex-row bg-[#FFFFFF] dark:bg-[#000000] border-b border-[#E5E5E5] dark:border-[#1F1F1F] overflow-x-auto hide-scrollbar">
+    <div className="flex items-center bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto whitespace-nowrap hide-scrollbar">
       {openFiles.map((file) => (
         <div
           key={file}
@@ -87,16 +87,16 @@ export default function EditorTabs() {
           onClick={() => setActiveFile(file)}
           className={`group flex items-center gap-2 px-3 py-2 min-w-max cursor-pointer text-[13px] border-t-2 select-none ${
             activeFile === file
-              ? "bg-[#F3F3F3] dark:bg-[#0A0A0A] text-[#242424] dark:text-[#E5E5E5] border-[#FF0000] dark:border-[#FF0000]"
-              : "bg-[#FFFFFF] dark:bg-[#000000] text-[#666666] dark:text-[#888888] border-transparent hover:bg-[#F3F3F3] dark:bg-[#0A0A0A] hover:text-[#242424] dark:text-[#E5E5E5]"
+              ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-[#FF0000] dark:border-[#FF0000]"
+              : "bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
             }`}
         >
           <span>{file.split('/').pop()}</span>
           <span
             className={`flex items-center justify-center p-0.5 rounded transition-all w-5 h-5 
               ${unsavedFiles.includes(file) 
-                ? "text-[#242424] dark:text-[#E5E5E5] group-hover:bg-[#D4D4D4] dark:hover:bg-[#1F1F1F]" 
-                : "text-transparent group-hover:text-[#666666] dark:text-[#888888] hover:!text-[#242424] dark:text-[#E5E5E5] hover:bg-[#D4D4D4] dark:hover:bg-[#1F1F1F]"}`}
+                ? "text-zinc-900 dark:text-zinc-100 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700" 
+                : "text-transparent group-hover:text-zinc-500 dark:group-hover:text-zinc-400 hover:!text-zinc-900 dark:hover:!text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
             onClick={(e) => handleClose(e, file)}
           >
             {unsavedFiles.includes(file) ? (

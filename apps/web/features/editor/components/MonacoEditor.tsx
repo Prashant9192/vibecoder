@@ -2,11 +2,13 @@
 
 import Editor, { useMonaco, Monaco } from "@monaco-editor/react";
 import { useEditor } from "../context/EditorContext";
+import { useTheme } from "@/features/theme/context/ThemeContext";
 import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 import { useEffect, useRef } from "react";
 
 export default function MonacoEditor() {
-    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles, editorTheme } = useEditor();
+    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles } = useEditor();
+    const { theme } = useTheme();
     const { saveFile } = useFileSystemContext();
     const monaco = useMonaco();
     const editorRef = useRef<any>(null);
@@ -47,7 +49,7 @@ export default function MonacoEditor() {
             <Editor
                 height="100%"
                 language="typescript"
-                theme={editorTheme}
+                theme={theme === "dark" ? "vs-dark" : "vs-light"}
                 value={files[activeFile] || ""}
                 onMount={handleMount}
                 onChange={(value) => {
