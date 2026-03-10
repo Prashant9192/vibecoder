@@ -76,7 +76,7 @@ export default function EditorTabs() {
   };
 
   return (
-    <div className="flex flex-row bg-[#000000] border-b border-[#1F1F1F] overflow-x-auto hide-scrollbar">
+    <div className="flex flex-row bg-[#FFFFFF] dark:bg-[#000000] border-b border-[#E5E5E5] dark:border-[#1F1F1F] overflow-x-auto hide-scrollbar">
       {openFiles.map((file) => (
         <div
           key={file}
@@ -87,16 +87,16 @@ export default function EditorTabs() {
           onClick={() => setActiveFile(file)}
           className={`group flex items-center gap-2 px-3 py-2 min-w-max cursor-pointer text-[13px] border-t-2 select-none ${
             activeFile === file
-              ? "bg-[#0A0A0A] text-[#E5E5E5] border-[#FF0000]"
-              : "bg-[#000000] text-[#888888] border-transparent hover:bg-[#0A0A0A] hover:text-[#E5E5E5]"
+              ? "bg-[#F3F3F3] dark:bg-[#0A0A0A] text-[#242424] dark:text-[#E5E5E5] border-[#FF0000] dark:border-[#FF0000]"
+              : "bg-[#FFFFFF] dark:bg-[#000000] text-[#666666] dark:text-[#888888] border-transparent hover:bg-[#F3F3F3] dark:bg-[#0A0A0A] hover:text-[#242424] dark:text-[#E5E5E5]"
             }`}
         >
           <span>{file.split('/').pop()}</span>
           <span
             className={`flex items-center justify-center p-0.5 rounded transition-all w-5 h-5 
               ${unsavedFiles.includes(file) 
-                ? "text-[#E5E5E5] group-hover:bg-[#1F1F1F]" 
-                : "text-transparent group-hover:text-[#888888] hover:!text-[#E5E5E5] hover:bg-[#1F1F1F]"}`}
+                ? "text-[#242424] dark:text-[#E5E5E5] group-hover:bg-[#D4D4D4] dark:hover:bg-[#1F1F1F]" 
+                : "text-transparent group-hover:text-[#666666] dark:text-[#888888] hover:!text-[#242424] dark:text-[#E5E5E5] hover:bg-[#D4D4D4] dark:hover:bg-[#1F1F1F]"}`}
             onClick={(e) => handleClose(e, file)}
           >
             {unsavedFiles.includes(file) ? (

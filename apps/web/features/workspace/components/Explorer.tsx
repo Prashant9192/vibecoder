@@ -10,8 +10,8 @@ const getFileIcon = (name: string) => {
   if (name.endsWith('.js') || name.endsWith('.jsx')) return <FileCode size={14} className="flex-shrink-0 text-[#F7DF1E]" />;
   if (name.endsWith('.json')) return <FileJson size={14} className="flex-shrink-0 text-[#CBCB41]" />;
   if (name.endsWith('.css')) return <FileCode size={14} className="flex-shrink-0 text-[#2965F1]" />;
-  if (name.endsWith('.md')) return <FileText size={14} className="flex-shrink-0 text-[#E5E5E5]" />;
-  return <File size={14} className="flex-shrink-0 text-[#888888]" />;
+  if (name.endsWith('.md')) return <FileText size={14} className="flex-shrink-0 text-[#242424] dark:text-[#E5E5E5]" />;
+  return <File size={14} className="flex-shrink-0 text-[#666666] dark:text-[#888888]" />;
 };
 
 export default function Explorer() {
@@ -150,15 +150,15 @@ export default function Explorer() {
   const renderCreatingInput = (parentPath: string) => {
     if (!creatingNode || creatingNode.parentPath !== parentPath) return null;
     return (
-      <div className="flex items-center gap-1.5 px-1 py-1 pl-4 text-[13px] bg-[#1A1A1A] border border-[#007FD4] rounded-sm min-w-0 h-7">
-        {creatingNode.type === 'file' ? getFileIcon(inputValue || "new.ts") : <Folder size={14} className="flex-shrink-0 text-[#888888]" />}
+      <div className="flex items-center gap-1.5 px-1 py-1 pl-4 text-[13px] bg-[#E8E8E8] dark:bg-[#1A1A1A] border border-[#007FD4] dark:border-[#007FD4] rounded-sm min-w-0 h-7">
+        {creatingNode.type === 'file' ? getFileIcon(inputValue || "new.ts") : <Folder size={14} className="flex-shrink-0 text-[#666666] dark:text-[#888888]" />}
         <input
           ref={inputRef}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleCreatingKeyDown}
           onBlur={commitCreating}
-          className="bg-transparent outline-none flex-1 min-w-0 m-0 p-0 text-[#E5E5E5] leading-none"
+          className="bg-transparent outline-none flex-1 min-w-0 m-0 p-0 text-[#242424] dark:text-[#E5E5E5] leading-none"
         />
       </div>
     );
@@ -214,11 +214,11 @@ export default function Explorer() {
   const renderNode = (node: FileNode) => {
     if (renamingNode && renamingNode.path === node.path) {
       return (
-        <div key={node.path} className={`flex items-center gap-1.5 px-1 py-1 ${node.type === 'file' ? 'pl-4' : 'pl-0.5'} text-[13px] bg-[#1A1A1A] border border-[#007FD4] rounded-sm min-w-0 h-7`}>
+        <div key={node.path} className={`flex items-center gap-1.5 px-1 py-1 ${node.type === 'file' ? 'pl-4' : 'pl-0.5'} text-[13px] bg-[#E8E8E8] dark:bg-[#1A1A1A] border border-[#007FD4] dark:border-[#007FD4] rounded-sm min-w-0 h-7`}>
           {node.type === 'file' ? getFileIcon(node.name) : (
             <>
-              <ChevronRight size={14} className="text-[#888888] flex-shrink-0 opacity-0" />
-              <Folder size={14} className="flex-shrink-0 text-[#888888]" />
+              <ChevronRight size={14} className="text-[#666666] dark:text-[#888888] flex-shrink-0 opacity-0" />
+              <Folder size={14} className="flex-shrink-0 text-[#666666] dark:text-[#888888]" />
             </>
           )}
           <input
@@ -227,7 +227,7 @@ export default function Explorer() {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => handleRenamingKeyDown(e, node)}
             onBlur={() => commitRenaming(node.path, node.name)}
-            className="bg-transparent outline-none flex-1 min-w-0 m-0 p-0 text-[#E5E5E5] leading-none"
+            className="bg-transparent outline-none flex-1 min-w-0 m-0 p-0 text-[#242424] dark:text-[#E5E5E5] leading-none"
           />
         </div>
       );
@@ -239,8 +239,8 @@ export default function Explorer() {
           key={node.path}
           className={`group flex items-center justify-between px-1 py-1 pl-4 cursor-pointer transition-colors text-[13px] rounded-sm select-none ${
             activeFile === node.path
-              ? "bg-[#1A1A1A] text-[#E5E5E5]"
-              : "text-[#888888] hover:bg-[#1A1A1A] hover:text-[#E5E5E5]"
+              ? "bg-[#E8E8E8] dark:bg-[#1A1A1A] text-[#242424] dark:text-[#E5E5E5]"
+              : "text-[#666666] dark:text-[#888888] hover:bg-[#E8E8E8] dark:bg-[#1A1A1A] hover:text-[#242424] dark:text-[#E5E5E5]"
             }`}
           onClick={() => openFile(node)}
         >
@@ -252,21 +252,21 @@ export default function Explorer() {
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => handleMove(e, node.path, node.name)}
-              className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
+              className="text-[#666666] dark:text-[#888888] hover:text-[#242424] dark:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#D4D4D4] dark:hover:bg-[#2A2A2A]"
               title="Move"
             >
               <FolderInput size={14} />
             </button>
             <button
               onClick={(e) => startRenaming(e, node.path, node.name)}
-              className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
+              className="text-[#666666] dark:text-[#888888] hover:text-[#242424] dark:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#D4D4D4] dark:hover:bg-[#2A2A2A]"
               title="Rename"
             >
               <Pencil size={14} />
             </button>
             <button
               onClick={(e) => handleDelete(e, node.path, node.name)}
-              className="text-[#888888] hover:text-[#FF0000] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
+              className="text-[#666666] dark:text-[#888888] hover:text-[#FF0000] transition-colors p-[2px] rounded hover:bg-[#D4D4D4] dark:hover:bg-[#2A2A2A]"
               title="Delete"
             >
               <Trash size={14} />
@@ -280,14 +280,14 @@ export default function Explorer() {
       return (
         <div key={node.path} className="mb-[2px]">
           <div
-            className="group flex items-center justify-between px-0.5 py-1 cursor-pointer text-[13px] text-[#E5E5E5] hover:bg-[#1A1A1A] rounded-sm transition-colors select-none"
+            className="group flex items-center justify-between px-0.5 py-1 cursor-pointer text-[13px] text-[#242424] dark:text-[#E5E5E5] hover:bg-[#E8E8E8] dark:bg-[#1A1A1A] rounded-sm transition-colors select-none"
             onClick={() => toggleFolder(node.path)}
           >
             <div className="flex items-center gap-1 flex-1 min-w-0">
-              <span className="text-[#888888] flex-shrink-0">
+              <span className="text-[#666666] dark:text-[#888888] flex-shrink-0">
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </span>
-              <span className="text-[#888888] flex-shrink-0">
+              <span className="text-[#666666] dark:text-[#888888] flex-shrink-0">
                 {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
               </span>
               <span className="truncate leading-none pt-0.5">{node.name}</span>
@@ -295,14 +295,14 @@ export default function Explorer() {
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => startCreating(e, "file", node.path)}
-                className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
+                className="text-[#666666] dark:text-[#888888] hover:text-[#242424] dark:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#D4D4D4] dark:hover:bg-[#2A2A2A]"
                 title="New File inside folder"
               >
                 <FilePlus size={14} />
               </button>
               <button
                 onClick={(e) => startCreating(e, "folder", node.path)}
-                className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
+                className="text-[#666666] dark:text-[#888888] hover:text-[#242424] dark:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#D4D4D4] dark:hover:bg-[#2A2A2A]"
                 title="New Folder inside folder"
               >
                 <FolderPlus size={14} />
@@ -311,7 +311,7 @@ export default function Explorer() {
           </div>
 
           {isExpanded && node.children && (
-            <ul className="ml-3 pl-1 border-l border-[#2A2A2A] flex flex-col">
+            <ul className="ml-3 pl-1 border-l border-[#D4D4D4] dark:border-[#2A2A2A] flex flex-col">
               {node.children.map((child) => renderNode(child))}
               {renderCreatingInput(node.path)}
             </ul>
@@ -322,20 +322,20 @@ export default function Explorer() {
   };
 
   return (
-    <div className="w-64 bg-[#0A0A0A] border-r border-[#1F1F1F] py-2 px-1 overflow-y-auto">
+    <div className="w-64 bg-[#F3F3F3] dark:bg-[#0A0A0A] border-r border-[#E5E5E5] dark:border-[#1F1F1F] py-2 px-1 overflow-y-auto">
       <div className="flex items-center justify-between mb-2 px-2">
-        <h2 className="text-[11px] uppercase tracking-wider font-semibold text-[#888888]">Explorer</h2>
+        <h2 className="text-[11px] uppercase tracking-wider font-semibold text-[#666666] dark:text-[#888888]">Explorer</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={(e) => startCreating(e, "file", "/src")}
-            className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#1A1A1A]"
+            className="text-[#666666] dark:text-[#888888] hover:text-[#242424] dark:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#E8E8E8] dark:bg-[#1A1A1A]"
             title="New File"
           >
             <FilePlus size={14} />
           </button>
           <button
             onClick={(e) => startCreating(e, "folder", "/src")}
-            className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#1A1A1A]"
+            className="text-[#666666] dark:text-[#888888] hover:text-[#242424] dark:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#E8E8E8] dark:bg-[#1A1A1A]"
             title="New Folder"
           >
             <FolderPlus size={14} />
