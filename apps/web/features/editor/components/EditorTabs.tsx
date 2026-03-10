@@ -33,7 +33,7 @@ export default function EditorTabs() {
             : "bg-[#0A0A0A] text-[#888888] border-transparent hover:bg-[#0F0F0F] hover:text-[#E5E5E5]"
             }`}
         >
-          <span>{file}</span>
+          <span>{file.split('/').pop()}</span>
           <span
             className="text-transparent group-hover:text-[#888888] hover:!text-[#FF0000] px-1 rounded transition-colors"
             onClick={(e) => handleClose(e, file)}

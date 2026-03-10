@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState } from "react";
 
 export type FileNode = {
     name: string;
+    path: string;
     type: "file" | "folder";
     content?: string;
     children?: FileNode[];
@@ -11,11 +12,11 @@ export type FileNode = {
 
 interface FileSystemContextType {
     files: FileNode[];
-    addFile: (fileName: string, folderName?: string) => void;
-    createFolder: (folderName: string, parentFolderName?: string) => void;
-    renameFile: (oldName: string, newName: string, folderName?: string) => void;
-    deleteFile: (fileName: string, folderName?: string) => void;
-    moveFile: (fileName: string, oldFolderName: string, newFolderName: string) => void;
+    addFile: (fileName: string, parentPath?: string) => void;
+    createFolder: (folderName: string, parentPath?: string) => void;
+    renameFile: (path: string, newName: string) => void;
+    deleteFile: (path: string) => void;
+    moveFile: (sourcePath: string, targetParentPath: string) => void;
 }
 
 const FileSystemContext = createContext<FileSystemContextType | undefined>(undefined);
@@ -24,10 +25,12 @@ export function FileSystemProvider({ children }: { children: React.ReactNode }) 
     const [files, setFiles] = useState<FileNode[]>([
         {
             name: "src",
+            path: "/src",
             type: "folder",
             children: [
                 {
                     name: "main.ts",
+                    path: "/src/main.ts",
                     type: "file",
                     content: `function greet(name: string) {
   return "Hello " + name;
@@ -37,6 +40,7 @@ console.log(greet("VibeCoder"));`,
                 },
                 {
                     name: "utils.ts",
+                    path: "/src/utils.ts",
                     type: "file",
                     content: `export function sum(a: number, b: number) {
   return a + b;
@@ -46,93 +50,117 @@ console.log(greet("VibeCoder"));`,
         },
     ]);
 
-    const updateNodeInTree = (nodes: FileNode[], folderName: string, updateFn: (folder: FileNode) => FileNode): FileNode[] => {
+    const updateNodeInTree = (nodes: FileNode[], targetPath: string, updateFn: (folder: FileNode) => FileNode): FileNode[] => {
         return nodes.map(node => {
-            if (node.type === "folder" && node.name === folderName) {
+            if (node.type === "folder" && node.path === targetPath) {
                 return updateFn(node);
             }
             if (node.type === "folder" && node.children) {
-                return { ...node, children: updateNodeInTree(node.children, folderName, updateFn) };
+                return { ...node, children: updateNodeInTree(node.children, targetPath, updateFn) };
             }
             return node;
         });
     };
 
-    const addFile = (fileName: string, folderName: string = "src") => {
-        setFiles(prevFiles => updateNodeInTree(prevFiles, folderName, folder => {
+    const addFile = (fileName: string, parentPath: string = "/src") => {
+        setFiles(prevFiles => updateNodeInTree(prevFiles, parentPath, folder => {
             if (folder.children?.some(f => f.name === fileName)) return folder;
+            const newPath = `${folder.path}/${fileName}`;
             return {
                 ...folder,
-                children: [...(folder.children || []), { name: fileName, type: "file", content: "" }]
+                children: [...(folder.children || []), { name: fileName, path: newPath, type: "file", content: "" }]
             };
         }));
     };
 
-    const createFolder = (newFolderName: string, parentFolderName: string = "src") => {
-        setFiles(prevFiles => updateNodeInTree(prevFiles, parentFolderName, folder => {
+    const createFolder = (newFolderName: string, parentPath: string = "/src") => {
+        setFiles(prevFiles => updateNodeInTree(prevFiles, parentPath, folder => {
             if (folder.children?.some(f => f.name === newFolderName)) return folder;
+            const newPath = `${folder.path}/${newFolderName}`;
             return {
                 ...folder,
-                children: [...(folder.children || []), { name: newFolderName, type: "folder", children: [] }]
+                children: [...(folder.children || []), { name: newFolderName, path: newPath, type: "folder", children: [] }]
             };
         }));
     };
 
-    const renameFile = (oldName: string, newName: string, folderName: string = "src") => {
-        setFiles(prevFiles => updateNodeInTree(prevFiles, folderName, folder => {
-            if (folder.children?.some(f => f.name === newName)) return folder;
-            return {
-                ...folder,
-                children: folder.children?.map(f =>
-                    f.name === oldName ? { ...f, name: newName } : f
-                )
+    const renameFile = (path: string, newName: string) => {
+        setFiles(prevFiles => {
+            const renameInTree = (nodes: FileNode[]): FileNode[] => {
+                return nodes.map(node => {
+                    if (node.path === path) { // Found exact match to rename
+                       // If folder, technically we need to recursively update children paths. Keeping simple for now since renaming folders isn't explicitly required yet, but let's handle file rename properly.
+                        const parentPath = path.substring(0, path.lastIndexOf('/'));
+                        const newPath = `${parentPath}/${newName}`;
+                        return { ...node, name: newName, path: newPath };
+                    }
+                    if (node.type === "folder" && node.children) {
+                        return { ...node, children: renameInTree(node.children) };
+                    }
+                    return node;
+                });
             };
-        }));
+            return renameInTree(prevFiles);
+        });
     };
 
-    const deleteFile = (fileName: string, folderName: string = "src") => {
-        setFiles(prevFiles => updateNodeInTree(prevFiles, folderName, folder => {
-            return {
-                ...folder,
-                children: folder.children?.filter(f => f.name !== fileName)
+    const deleteFile = (path: string) => {
+        setFiles(prevFiles => {
+            const deleteFromTree = (nodes: FileNode[]): FileNode[] => {
+                return nodes.filter(node => node.path !== path).map(node => {
+                    if (node.type === "folder" && node.children) {
+                        return { ...node, children: deleteFromTree(node.children) };
+                    }
+                    return node;
+                });
             };
-        }));
+            return deleteFromTree(prevFiles);
+        });
     };
 
-    const moveFile = (fileName: string, oldFolderName: string, newFolderName: string) => {
+    const moveFile = (sourcePath: string, targetParentPath: string) => {
         setFiles(prevFiles => {
             let fileToMove: FileNode | undefined;
 
             const removeFileFromTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {
-                    if (node.type === "folder" && node.name === oldFolderName) {
-                        const target = node.children?.find(f => f.name === fileName);
-                        if (target) {
-                            fileToMove = target;
-                            return {
-                                ...node,
-                                children: node.children?.filter(f => f.name !== fileName)
-                            };
-                        }
-                    }
                     if (node.type === "folder" && node.children) {
+                        const targetIndex = node.children.findIndex(f => f.path === sourcePath);
+                        if (targetIndex !== -1) {
+                            fileToMove = node.children[targetIndex];
+                            const newChildren = [...node.children];
+                            newChildren.splice(targetIndex, 1);
+                            return { ...node, children: newChildren };
+                        }
                         return { ...node, children: removeFileFromTree(node.children) };
                     }
                     return node;
                 });
             };
 
-            const afterRemoval = removeFileFromTree(prevFiles);
+            // First pass mutates slightly by removing it but we return a new array
+            let afterRemoval = removeFileFromTree(prevFiles);
+            // If it was at the root somehow
+            const rootTargetIndex = afterRemoval.findIndex(f => f.path === sourcePath);
+             if (rootTargetIndex !== -1) {
+                fileToMove = afterRemoval[rootTargetIndex];
+                afterRemoval = afterRemoval.filter(f => f.path !== sourcePath);
+             }
+
 
             if (!fileToMove) return prevFiles;
 
+            // Recalculate path based on new parent
+            const newPath = targetParentPath === "" ? `/${fileToMove.name}` : `${targetParentPath}/${fileToMove.name}`;
+            const updatedFileToMove = { ...fileToMove, path: newPath };
+
             const addFileToTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {
-                    if (node.type === "folder" && node.name === newFolderName) {
-                        if (node.children?.some(f => f.name === fileName)) return node;
+                    if (node.type === "folder" && node.path === targetParentPath) {
+                        if (node.children?.some(f => f.name === updatedFileToMove.name)) return node;
                         return {
                             ...node,
-                            children: [...(node.children || []), fileToMove!]
+                            children: [...(node.children || []), updatedFileToMove]
                         };
                     }
                     if (node.type === "folder" && node.children) {
@@ -141,6 +169,11 @@ console.log(greet("VibeCoder"));`,
                     return node;
                 });
             };
+
+             // root target catch
+            if (targetParentPath === "") {
+               return [...afterRemoval, updatedFileToMove];
+            }
 
             return addFileToTree(afterRemoval);
         });

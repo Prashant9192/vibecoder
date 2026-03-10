@@ -11,35 +11,34 @@ export default function Explorer() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const openFile = (file: any) => {
-    if (!files[file.name]) {
+    if (!files[file.path]) {
       setFiles({
         ...files,
-        [file.name]: file.content || ""
+        [file.path]: file.content || ""
       });
     }
 
-    setActiveFile(file.name);
+    setActiveFile(file.path);
 
-    if (!openFiles.includes(file.name)) {
-      setOpenFiles([...openFiles, file.name]);
+    if (!openFiles.includes(file.path)) {
+      setOpenFiles([...openFiles, file.path]);
     }
   };
 
-  const handleNewFile = (parentFolder: string = "src") => {
-    const fileName = prompt(`Enter new file name in ${parentFolder}:`);
+  const handleNewFile = (parentPath: string = "/src") => {
+    const fileName = prompt(`Enter new file name in ${parentPath}:`);
     if (fileName && fileName.trim()) {
       const name = fileName.trim();
-      addFile(name, parentFolder);
-      openFile({ name, type: "file", content: "" });
+      addFile(name, parentPath);
+      openFile({ name, path: `${parentPath}/${name}`, type: "file", content: "" });
     }
   };
 
-  const handleNewFolder = (parentFolder: string = "src") => {
-    const folderName = prompt(`Enter new folder name in ${parentFolder}:`);
+  const handleNewFolder = (parentPath: string = "/src") => {
+    const folderName = prompt(`Enter new folder name in ${parentPath}:`);
     if (folderName && folderName.trim()) {
-      createFolder(folderName.trim(), parentFolder);
-      // Automatically expand parent whenever a child is added
-      setExpanded(prev => ({ ...prev, [parentFolder]: true }));
+      createFolder(folderName.trim(), parentPath);
+      setExpanded(prev => ({ ...prev, [parentPath]: true }));
     }
   };
 
@@ -117,11 +116,11 @@ export default function Explorer() {
     }));
   };
 
-  const renderNode = (node: FileNode, parentName: string = "") => {
+  const renderNode = (node: FileNode) => {
     if (node.type === "file") {
       return (
         <li
-          key={node.name}
+          key={node.path}
           className="group flex items-stretch justify-between px-1 py-1 pl-4 cursor-pointer transition-colors hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded"
           onClick={() => openFile(node)}
         >
@@ -132,21 +131,21 @@ export default function Explorer() {
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              onClick={(e) => handleMove(e, parentName, node.name)}
+              onClick={(e) => handleMove(e, node.path, node.name)}
               className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
               title="Move"
             >
               <FolderInput size={14} />
             </button>
             <button
-              onClick={(e) => handleRename(e, parentName, node.name)}
+              onClick={(e) => handleRename(e, node.path, node.name)}
               className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
               title="Rename"
             >
               <Pencil size={14} />
             </button>
             <button
-              onClick={(e) => handleDelete(e, parentName, node.name)}
+              onClick={(e) => handleDelete(e, node.path, node.name)}
               className="text-[#888888] hover:text-[#FF0000] transition-colors px-1"
               title="Delete"
             >
@@ -156,13 +155,13 @@ export default function Explorer() {
         </li>
       );
     } else if (node.type === "folder") {
-      const isExpanded = expanded[node.name] ?? true;
+      const isExpanded = expanded[node.path] ?? true;
 
       return (
-        <div key={node.name} className="mb-1">
+        <div key={node.path} className="mb-1">
           <div
             className="group flex items-center justify-between px-1 py-1 cursor-pointer text-[#E5E5E5] hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded transition-colors"
-            onClick={() => toggleFolder(node.name)}
+            onClick={() => toggleFolder(node.path)}
           >
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] w-3 text-center">{isExpanded ? '▼' : '▶'}</span>
@@ -173,7 +172,7 @@ export default function Explorer() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleNewFile(node.name);
+                  handleNewFile(node.path);
                 }}
                 className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
                 title="New File inside folder"
@@ -183,7 +182,7 @@ export default function Explorer() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleNewFolder(node.name);
+                  handleNewFolder(node.path);
                 }}
                 className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
                 title="New Folder inside folder"
@@ -195,7 +194,7 @@ export default function Explorer() {
 
           {isExpanded && node.children && (
             <ul className="ml-4 flex flex-col text-sm text-[#888888]">
-              {node.children.map((child) => renderNode(child, node.name))}
+              {node.children.map((child) => renderNode(child))}
             </ul>
           )}
         </div>
@@ -209,14 +208,14 @@ export default function Explorer() {
         <h2 className="text-sm font-semibold text-[#E5E5E5]">Explorer</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleNewFile("src")}
+            onClick={() => handleNewFile("/src")}
             className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
             title="New File"
           >
             <FilePlus size={16} />
           </button>
           <button
-            onClick={() => handleNewFolder("src")}
+            onClick={() => handleNewFolder("/src")}
             className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
             title="New Folder"
           >
