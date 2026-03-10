@@ -1,6 +1,7 @@
 "use client";
 
 import { useEditor } from "@/features/editor/context/EditorContext";
+import { X } from "lucide-react";
 
 export default function EditorTabs() {
   const { openFiles, activeFile, setActiveFile, setOpenFiles } = useEditor();
@@ -23,22 +24,23 @@ export default function EditorTabs() {
   };
 
   return (
-    <div className="flex bg-[#0A0A0A] border-b border-[#1F1F1F]">
+    <div className="flex flex-row bg-[#000000] border-b border-[#1F1F1F] overflow-x-auto hide-scrollbar">
       {openFiles.map((file) => (
         <div
           key={file}
           onClick={() => setActiveFile(file)}
-          className={`group flex items-center gap-2 px-4 py-2 cursor-pointer text-sm border-t-2 transition-colors ${activeFile === file
-            ? "bg-[#0F0F0F] text-[#E5E5E5] border-[#FF0000]"
-            : "bg-[#0A0A0A] text-[#888888] border-transparent hover:bg-[#0F0F0F] hover:text-[#E5E5E5]"
+          className={`group flex items-center gap-2 px-3 py-2 min-w-max cursor-pointer text-[13px] border-t-2 select-none ${
+            activeFile === file
+              ? "bg-[#0A0A0A] text-[#E5E5E5] border-[#FF0000]"
+              : "bg-[#000000] text-[#888888] border-transparent hover:bg-[#0A0A0A] hover:text-[#E5E5E5]"
             }`}
         >
           <span>{file.split('/').pop()}</span>
           <span
-            className="text-transparent group-hover:text-[#888888] hover:!text-[#FF0000] px-1 rounded transition-colors"
+            className="text-transparent group-hover:text-[#888888] hover:!text-[#E5E5E5] hover:bg-[#1F1F1F] p-0.5 rounded transition-all"
             onClick={(e) => handleClose(e, file)}
           >
-            ×
+            <X size={14} strokeWidth={2.5} />
           </span>
         </div>
       ))}

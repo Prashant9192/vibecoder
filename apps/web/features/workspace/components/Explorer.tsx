@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
-import { FilePlus, FolderPlus, FolderInput, Pencil, Trash } from "lucide-react";
+import { FilePlus, FolderPlus, FolderInput, Pencil, Trash, ChevronRight, ChevronDown, Folder, FolderOpen, FileCode } from "lucide-react";
 
 export default function Explorer() {
   const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
@@ -42,47 +42,51 @@ export default function Explorer() {
     }
   };
 
-  const handleRename = (e: React.MouseEvent, folderName: string, oldName: string) => {
+  const handleRename = (e: React.MouseEvent, nodePath: string, oldName: string) => {
     e.stopPropagation();
     const newName = prompt(`Rename ${oldName} to:`, oldName);
 
     if (newName && newName.trim() && newName.trim() !== oldName) {
       const trimName = newName.trim();
-      renameFile(oldName, trimName, folderName);
+      
+      const parentPath = nodePath.substring(0, nodePath.lastIndexOf('/'));
+      const newPath = `${parentPath}/${trimName}`;
+      
+      renameFile(nodePath, trimName);
 
-      if (openFiles.includes(oldName)) {
-        const newOpenTabs = openFiles.map(f => f === oldName ? trimName : f);
+      if (openFiles.includes(nodePath)) {
+        const newOpenTabs = openFiles.map(f => f === nodePath ? newPath : f);
         setOpenFiles(newOpenTabs);
       }
 
-      const activeWasRenamed = activeFile === oldName;
+      const activeWasRenamed = activeFile === nodePath;
 
-      if (files[oldName] !== undefined) {
+      if (files[nodePath] !== undefined) {
         const updated = { ...files };
-        updated[trimName] = updated[oldName];
-        delete updated[oldName];
+        updated[newPath] = updated[nodePath];
+        delete updated[nodePath];
         setFiles(updated);
       }
 
       if (activeWasRenamed) {
-        setActiveFile(trimName);
+        setActiveFile(newPath);
       }
     }
   };
 
-  const handleDelete = (e: React.MouseEvent, folderName: string, fileName: string) => {
+  const handleDelete = (e: React.MouseEvent, nodePath: string, fileName: string) => {
     e.stopPropagation();
     const confirmDelete = window.confirm(`Are you sure you want to delete ${fileName}?`);
 
     if (confirmDelete) {
-      deleteFile(fileName, folderName);
+      deleteFile(nodePath);
 
-      const newOpenFiles = openFiles.filter(f => f !== fileName);
+      const newOpenFiles = openFiles.filter(f => f !== nodePath);
       setOpenFiles(newOpenFiles);
 
-      if (activeFile === fileName) {
+      if (activeFile === nodePath) {
         if (newOpenFiles.length > 0) {
-          const closedIndex = openFiles.indexOf(fileName);
+          const closedIndex = openFiles.indexOf(nodePath);
           const newActiveIndex = closedIndex > 0 ? closedIndex - 1 : 0;
           setActiveFile(newOpenFiles[newActiveIndex]);
         } else {
@@ -90,22 +94,23 @@ export default function Explorer() {
         }
       }
 
-      if (files[fileName] !== undefined) {
+      if (files[nodePath] !== undefined) {
         const updated = { ...files };
-        delete updated[fileName];
+        delete updated[nodePath];
         setFiles(updated);
       }
     }
   };
 
-  const handleMove = (e: React.MouseEvent, oldFolderName: string, fileName: string) => {
+  const handleMove = (e: React.MouseEvent, oldNodePath: string, fileName: string) => {
     e.stopPropagation();
-    const newFolderName = prompt(`Move ${fileName} to folder:`, oldFolderName);
-
-    if (newFolderName && newFolderName.trim() && newFolderName.trim() !== oldFolderName) {
-      moveFile(fileName, oldFolderName, newFolderName.trim());
-      // Expand target folder automatically to show moved file
-      setExpanded(prev => ({ ...prev, [newFolderName.trim()]: true }));
+    
+    // Quick UI hack for now to select path instead of complicated folder traversing
+    const newParentPath = prompt(`Move ${fileName} to folder path (e.g. /src/components):`, "/src");
+    
+    if (newParentPath && newParentPath.trim()) {
+      moveFile(oldNodePath, newParentPath.trim());
+      setExpanded(prev => ({ ...prev, [newParentPath.trim()]: true }));
     }
   };
 
@@ -121,32 +126,36 @@ export default function Explorer() {
       return (
         <li
           key={node.path}
-          className="group flex items-stretch justify-between px-1 py-1 pl-4 cursor-pointer transition-colors hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded"
+          className={`group flex items-center justify-between px-1 py-1 pl-4 cursor-pointer transition-colors text-[13px] rounded-sm select-none ${
+            activeFile === node.path
+              ? "bg-[#1A1A1A] text-[#E5E5E5]"
+              : "text-[#888888] hover:bg-[#1A1A1A] hover:text-[#E5E5E5]"
+            }`}
           onClick={() => openFile(node)}
         >
-          <div className="flex items-center gap-2">
-            <span>📄</span>
-            <span>{node.name}</span>
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <FileCode size={14} className="flex-shrink-0" />
+            <span className="truncate leading-none pt-0.5">{node.name}</span>
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => handleMove(e, node.path, node.name)}
-              className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+              className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
               title="Move"
             >
               <FolderInput size={14} />
             </button>
             <button
               onClick={(e) => handleRename(e, node.path, node.name)}
-              className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+              className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
               title="Rename"
             >
               <Pencil size={14} />
             </button>
             <button
               onClick={(e) => handleDelete(e, node.path, node.name)}
-              className="text-[#888888] hover:text-[#FF0000] transition-colors px-1"
+              className="text-[#888888] hover:text-[#FF0000] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
               title="Delete"
             >
               <Trash size={14} />
@@ -158,15 +167,19 @@ export default function Explorer() {
       const isExpanded = expanded[node.path] ?? true;
 
       return (
-        <div key={node.path} className="mb-1">
+        <div key={node.path} className="mb-[2px]">
           <div
-            className="group flex items-center justify-between px-1 py-1 cursor-pointer text-[#E5E5E5] hover:bg-[#0F0F0F] hover:text-[#FF0000] rounded transition-colors"
+            className="group flex items-center justify-between px-0.5 py-1 cursor-pointer text-[13px] text-[#E5E5E5] hover:bg-[#1A1A1A] rounded-sm transition-colors select-none"
             onClick={() => toggleFolder(node.path)}
           >
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] w-3 text-center">{isExpanded ? '▼' : '▶'}</span>
-              <span className="text-sm">📁</span>
-              <span className="text-sm">{node.name}</span>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <span className="text-[#888888] flex-shrink-0">
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+              <span className="text-[#888888] flex-shrink-0">
+                {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+              </span>
+              <span className="truncate leading-none pt-0.5">{node.name}</span>
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
@@ -174,7 +187,7 @@ export default function Explorer() {
                   e.stopPropagation();
                   handleNewFile(node.path);
                 }}
-                className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+                className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
                 title="New File inside folder"
               >
                 <FilePlus size={14} />
@@ -184,7 +197,7 @@ export default function Explorer() {
                   e.stopPropagation();
                   handleNewFolder(node.path);
                 }}
-                className="text-[#888888] hover:text-[#E5E5E5] transition-colors px-1"
+                className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
                 title="New Folder inside folder"
               >
                 <FolderPlus size={14} />
@@ -193,7 +206,7 @@ export default function Explorer() {
           </div>
 
           {isExpanded && node.children && (
-            <ul className="ml-4 flex flex-col text-sm text-[#888888]">
+            <ul className="ml-3 pl-1 border-l border-[#2A2A2A] flex flex-col">
               {node.children.map((child) => renderNode(child))}
             </ul>
           )}
@@ -203,23 +216,23 @@ export default function Explorer() {
   };
 
   return (
-    <div className="w-64 bg-[#0A0A0A] border-r border-[#1F1F1F] p-4 overflow-y-auto">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-[#E5E5E5]">Explorer</h2>
+    <div className="w-64 bg-[#0A0A0A] border-r border-[#1F1F1F] py-2 px-1 overflow-y-auto">
+      <div className="flex items-center justify-between mb-2 px-2">
+        <h2 className="text-[11px] uppercase tracking-wider font-semibold text-[#888888]">Explorer</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleNewFile("/src")}
-            className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
+            className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#1A1A1A]"
             title="New File"
           >
-            <FilePlus size={16} />
+            <FilePlus size={14} />
           </button>
           <button
             onClick={() => handleNewFolder("/src")}
-            className="text-[#888888] hover:text-[#E5E5E5] transition-colors"
+            className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#1A1A1A]"
             title="New Folder"
           >
-            <FolderPlus size={16} />
+            <FolderPlus size={14} />
           </button>
         </div>
       </div>
