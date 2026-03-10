@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { FilePlus, FolderPlus, FolderInput, Pencil, Trash, ChevronRight, ChevronDown, Folder, FolderOpen, FileCode } from "lucide-react";
@@ -9,6 +9,28 @@ export default function Explorer() {
   const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
   const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [creatingNode, setCreatingNode] = useState<{ parentPath: string, type: "file" | "folder" } | null>(null);
+  const [renamingNode, setRenamingNode] = useState<{ path: string, initialName: string } | null>(null);
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (creatingNode || renamingNode) {
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          if (renamingNode) {
+            const dotIndex = inputValue.lastIndexOf('.');
+            if (dotIndex > 0) {
+              inputRef.current.setSelectionRange(0, dotIndex);
+            } else {
+              inputRef.current.select();
+            }
+          }
+        }
+      }, 0);
+    }
+  }, [creatingNode, renamingNode]);
 
   const openFile = (file: any) => {
     if (!files[file.path]) {
@@ -25,29 +47,44 @@ export default function Explorer() {
     }
   };
 
-  const handleNewFile = (parentPath: string = "/src") => {
-    const fileName = prompt(`Enter new file name in ${parentPath}:`);
-    if (fileName && fileName.trim()) {
-      const name = fileName.trim();
-      addFile(name, parentPath);
-      openFile({ name, path: `${parentPath}/${name}`, type: "file", content: "" });
-    }
-  };
-
-  const handleNewFolder = (parentPath: string = "/src") => {
-    const folderName = prompt(`Enter new folder name in ${parentPath}:`);
-    if (folderName && folderName.trim()) {
-      createFolder(folderName.trim(), parentPath);
-      setExpanded(prev => ({ ...prev, [parentPath]: true }));
-    }
-  };
-
-  const handleRename = (e: React.MouseEvent, nodePath: string, oldName: string) => {
+  const startCreating = (e: React.MouseEvent, type: "file" | "folder", parentPath: string = "/src") => {
     e.stopPropagation();
-    const newName = prompt(`Rename ${oldName} to:`, oldName);
+    setCreatingNode({ type, parentPath });
+    setInputValue("");
+    setExpanded(prev => ({ ...prev, [parentPath]: true }));
+  };
 
-    if (newName && newName.trim() && newName.trim() !== oldName) {
-      const trimName = newName.trim();
+  const commitCreating = () => {
+    if (creatingNode && inputValue.trim()) {
+      const name = inputValue.trim();
+      if (creatingNode.type === "file") {
+        addFile(name, creatingNode.parentPath);
+        openFile({ name, path: `${creatingNode.parentPath}/${name}`, type: "file", content: "" });
+      } else {
+        createFolder(name, creatingNode.parentPath);
+      }
+    }
+    setCreatingNode(null);
+    setInputValue("");
+  };
+
+  const handleCreatingKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") commitCreating();
+    if (e.key === "Escape") {
+      setCreatingNode(null);
+      setInputValue("");
+    }
+  };
+
+  const startRenaming = (e: React.MouseEvent, nodePath: string, initialName: string) => {
+    e.stopPropagation();
+    setRenamingNode({ path: nodePath, initialName });
+    setInputValue(initialName);
+  };
+
+  const commitRenaming = (nodePath: string, oldName: string) => {
+    if (renamingNode && inputValue.trim() && inputValue.trim() !== oldName) {
+      const trimName = inputValue.trim();
       
       const parentPath = nodePath.substring(0, nodePath.lastIndexOf('/'));
       const newPath = `${parentPath}/${trimName}`;
@@ -72,6 +109,33 @@ export default function Explorer() {
         setActiveFile(newPath);
       }
     }
+    setRenamingNode(null);
+    setInputValue("");
+  };
+
+  const handleRenamingKeyDown = (e: React.KeyboardEvent, node: FileNode) => {
+    if (e.key === "Enter") commitRenaming(node.path, node.name);
+    if (e.key === "Escape") {
+      setRenamingNode(null);
+      setInputValue("");
+    }
+  };
+
+  const renderCreatingInput = (parentPath: string) => {
+    if (!creatingNode || creatingNode.parentPath !== parentPath) return null;
+    return (
+      <div className="flex items-center gap-1.5 px-1 py-1 pl-4 text-[13px] bg-[#1A1A1A] border border-[#007FD4] rounded-sm min-w-0 h-7">
+        {creatingNode.type === 'file' ? <FileCode size={14} className="flex-shrink-0 text-[#888888]" /> : <Folder size={14} className="flex-shrink-0 text-[#888888]" />}
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleCreatingKeyDown}
+          onBlur={commitCreating}
+          className="bg-transparent outline-none flex-1 min-w-0 m-0 p-0 text-[#E5E5E5] leading-none"
+        />
+      </div>
+    );
   };
 
   const handleDelete = (e: React.MouseEvent, nodePath: string, fileName: string) => {
@@ -122,6 +186,29 @@ export default function Explorer() {
   };
 
   const renderNode = (node: FileNode) => {
+    if (renamingNode && renamingNode.path === node.path) {
+      return (
+        <div key={node.path} className={`flex items-center gap-1.5 px-1 py-1 ${node.type === 'file' ? 'pl-4' : 'pl-0.5'} text-[13px] bg-[#1A1A1A] border border-[#007FD4] rounded-sm min-w-0 h-7`}>
+          {node.type === 'file' ? (
+            <FileCode size={14} className="flex-shrink-0 text-[#888888]" />
+          ) : (
+            <>
+              <ChevronRight size={14} className="text-[#888888] flex-shrink-0 opacity-0" />
+              <Folder size={14} className="flex-shrink-0 text-[#888888]" />
+            </>
+          )}
+          <input
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => handleRenamingKeyDown(e, node)}
+            onBlur={() => commitRenaming(node.path, node.name)}
+            className="bg-transparent outline-none flex-1 min-w-0 m-0 p-0 text-[#E5E5E5] leading-none"
+          />
+        </div>
+      );
+    }
+
     if (node.type === "file") {
       return (
         <li
@@ -147,7 +234,7 @@ export default function Explorer() {
               <FolderInput size={14} />
             </button>
             <button
-              onClick={(e) => handleRename(e, node.path, node.name)}
+              onClick={(e) => startRenaming(e, node.path, node.name)}
               className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
               title="Rename"
             >
@@ -183,20 +270,14 @@ export default function Explorer() {
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNewFile(node.path);
-                }}
+                onClick={(e) => startCreating(e, "file", node.path)}
                 className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
                 title="New File inside folder"
               >
                 <FilePlus size={14} />
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNewFolder(node.path);
-                }}
+                onClick={(e) => startCreating(e, "folder", node.path)}
                 className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-[2px] rounded hover:bg-[#2A2A2A]"
                 title="New Folder inside folder"
               >
@@ -208,6 +289,7 @@ export default function Explorer() {
           {isExpanded && node.children && (
             <ul className="ml-3 pl-1 border-l border-[#2A2A2A] flex flex-col">
               {node.children.map((child) => renderNode(child))}
+              {renderCreatingInput(node.path)}
             </ul>
           )}
         </div>
@@ -221,14 +303,14 @@ export default function Explorer() {
         <h2 className="text-[11px] uppercase tracking-wider font-semibold text-[#888888]">Explorer</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleNewFile("/src")}
+            onClick={(e) => startCreating(e, "file", "/src")}
             className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#1A1A1A]"
             title="New File"
           >
             <FilePlus size={14} />
           </button>
           <button
-            onClick={() => handleNewFolder("/src")}
+            onClick={(e) => startCreating(e, "folder", "/src")}
             className="text-[#888888] hover:text-[#E5E5E5] transition-colors p-1 rounded hover:bg-[#1A1A1A]"
             title="New Folder"
           >
