@@ -2,6 +2,7 @@
 
 import MonacoEditor from "@/features/editor/components/MonacoEditor";
 import EditorTabs from "@/features/editor/components/EditorTabs";
+import Breadcrumbs from "@/features/editor/components/Breadcrumbs";
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { useState, useCallback, useRef, useEffect } from "react";
 
@@ -50,7 +51,8 @@ export default function EditorArea() {
         {/* Left Group */}
         <div style={{ width: isSplitView ? `${splitWidth}%` : '100%' }} className="relative h-full flex flex-col min-w-0 overflow-hidden" onClick={() => setActiveGroup("left")}>
           <EditorTabs group="left" />
-          <div className="flex-1 w-full relative">
+          <Breadcrumbs group="left" />
+          <div className="flex-1 w-full relative overflow-hidden">
              <MonacoEditor fileId={editorGroups.left.activeFile} />
           </div>
         </div>
@@ -66,7 +68,8 @@ export default function EditorArea() {
         {isSplitView && (
           <div style={{ width: `${100 - splitWidth}%` }} className="relative h-full flex flex-col min-w-0 overflow-hidden border-l border-zinc-200 dark:border-zinc-800" onClick={() => setActiveGroup("right")}>
             <EditorTabs group="right" />
-            <div className="flex-1 w-full relative">
+            <Breadcrumbs group="right" />
+            <div className="flex-1 w-full relative overflow-hidden">
                 <MonacoEditor fileId={editorGroups.right.activeFile} />
             </div>
           </div>
