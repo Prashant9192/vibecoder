@@ -23,7 +23,7 @@ const getFileIcon = (name: string) => {
 
 export default function Explorer({ width = 256 }: { width?: number }) {
   const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
-  const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
+  const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles, setIsSplitView, setRightFileId } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [creatingNode, setCreatingNode] = useState<{ parentPath: string, type: "file" | "folder" } | null>(null);
   const [renamingNode, setRenamingNode] = useState<{ path: string, initialName: string } | null>(null);
@@ -326,6 +326,12 @@ export default function Explorer({ width = 256 }: { width?: number }) {
           </ContextMenuTrigger>
           <ContextMenuContent className="w-48 text-[13px] rounded-lg">
             <ContextMenuItem onClick={(e) => { e.stopPropagation(); openFile(node); }}>Open</ContextMenuItem>
+            <ContextMenuItem onClick={(e) => { 
+               e.stopPropagation(); 
+               openFile(node); 
+               setIsSplitView(true); 
+               setRightFileId(node.path);
+            }}>Open to Side</ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={(e) => { e.stopPropagation(); startRenaming(e, node.path, node.name); }}>Rename</ContextMenuItem>
             <ContextMenuItem onClick={(e) => handleMove(e, node.path, node.name)}>Move</ContextMenuItem>

@@ -6,18 +6,19 @@ import { useTheme } from "@/features/theme/context/ThemeContext";
 import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 import { useEffect, useRef } from "react";
 
-export default function MonacoEditor() {
+export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}) {
     const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
+    const targetFile = fileId !== undefined ? fileId : activeFile;
     const { theme } = useTheme();
     const { saveFile } = useFileSystemContext();
     const monaco = useMonaco();
     const editorRef = useRef<any>(null);
 
     const handleSave = () => {
-        if (!activeFile) return;
-        const currentContent = files[activeFile] || "";
-        saveFile(activeFile, currentContent);
-        setUnsavedFiles(unsavedFiles.filter(f => f !== activeFile));
+        if (!targetFile) return;
+        const currentContent = files[targetFile] || "";
+        saveFile(targetFile, currentContent);
+        setUnsavedFiles(unsavedFiles.filter(f => f !== targetFile));
     };
 
     const handleMount = (editor: any, monaco: Monaco) => {
@@ -59,7 +60,7 @@ export default function MonacoEditor() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeFile, files, unsavedFiles]); // dependencies so handleSave gets fresh state
+    }, [targetFile, files, unsavedFiles]); // dependencies so handleSave gets fresh state
 
     useEffect(() => {
         if (lineToReveal !== null && editorRef.current) {
@@ -73,7 +74,7 @@ export default function MonacoEditor() {
         }
     }, [lineToReveal, setLineToReveal]);
 
-    if (!activeFile) return null;
+    if (!targetFile) return null;
 
     return (
         <div className="h-full w-full">
@@ -81,15 +82,15 @@ export default function MonacoEditor() {
                 height="100%"
                 language="typescript"
                 theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                value={files[activeFile] || ""}
+                value={files[targetFile] || ""}
                 onMount={handleMount}
                 onChange={(value) => {
                     setFiles({
                         ...files,
-                        [activeFile]: value || ""
+                        [targetFile]: value || ""
                     });
-                    if (!unsavedFiles.includes(activeFile)) {
-                        setUnsavedFiles([...unsavedFiles, activeFile]);
+                    if (!unsavedFiles.includes(targetFile)) {
+                        setUnsavedFiles([...unsavedFiles, targetFile]);
                     }
                 }}
                 options={{

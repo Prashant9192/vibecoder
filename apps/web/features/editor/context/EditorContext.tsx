@@ -10,12 +10,16 @@ interface EditorContextType {
     recentFiles: string[];
     cursorPosition: { lineNumber: number, column: number } | null;
     lineToReveal: number | null;
+    isSplitView: boolean;
+    rightFileId: string | null;
     setActiveFile: (file: string | null) => void;
     setOpenFiles: (files: string[]) => void;
     setFiles: (files: Record<string, string>) => void;
     setUnsavedFiles: (files: string[]) => void;
     setCursorPosition: (pos: { lineNumber: number, column: number } | null) => void;
     setLineToReveal: (line: number | null) => void;
+    setIsSplitView: (split: boolean) => void;
+    setRightFileId: (fileId: string | null) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -28,6 +32,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const [recentFiles, setRecentFiles] = useState<string[]>([]);
     const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number, column: number } | null>(null);
     const [lineToReveal, setLineToReveal] = useState<number | null>(null);
+    const [isSplitView, setIsSplitView] = useState(false);
+    const [rightFileId, setRightFileId] = useState<string | null>(null);
 
     const handleSetActiveFile = (file: string | null) => {
         setActiveFile(file);
@@ -49,12 +55,16 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
                 recentFiles,
                 cursorPosition,
                 lineToReveal,
+                isSplitView,
+                rightFileId,
                 setActiveFile: handleSetActiveFile,
                 setOpenFiles,
                 setFiles,
                 setUnsavedFiles,
                 setCursorPosition,
                 setLineToReveal,
+                setIsSplitView,
+                setRightFileId,
             }}
         >
             {children}
