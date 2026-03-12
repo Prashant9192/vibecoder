@@ -8,6 +8,7 @@ import ChatPanel from "./ChatPanel";
 import StatusBar from "./StatusBar";
 import { CommandPalette } from "@/features/command/components/CommandPalette";
 import { SearchModal } from "@/features/search/components/SearchModal";
+import { GitPanel } from "@/features/git/components/GitPanel";
 import { EditorProvider } from "@/features/editor/context/EditorContext";
 import { FileSystemProvider } from "@/features/filesystem/context/FileSystemContext";
 import { ThemeProvider } from "@/features/theme/context/ThemeContext";
@@ -21,6 +22,7 @@ export default function WorkspaceLayout() {
   const [explorerWidth, setExplorerWidth] = useState(260);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<"explorer" | "git">("explorer");
   const isDragging = useRef(false);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -85,8 +87,17 @@ export default function WorkspaceLayout() {
         <EditorProvider>
           <div className="flex flex-col h-screen overflow-hidden text-black dark:text-white bg-white dark:bg-zinc-900">
             <div className="flex flex-1 min-h-0">
-              <ActivityBar onSearchClick={() => setSearchOpen(true)} />
-              <Explorer width={explorerWidth} />
+              <ActivityBar
+                onSearchClick={() => setSearchOpen(true)}
+                onGitClick={() => setActivePanel(p => p === "git" ? "explorer" : "git")}
+                activePanel={activePanel}
+              />
+              {activePanel === "explorer" && <Explorer width={explorerWidth} />}
+              {activePanel === "git" && (
+                <div style={{ width: explorerWidth, flexShrink: 0 }} className="flex flex-col h-full border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                  <GitPanel />
+                </div>
+              )}
               <div 
                 className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
                 onMouseDown={startResizing}
