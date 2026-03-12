@@ -52,12 +52,14 @@ export default function WorkspaceLayout() {
     const handleGlobalSearch = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
-        setSearchOpen(true);
+        if (!isSearchOpen) {
+          setSearchOpen(true);
+        }
       }
     };
-    window.addEventListener("keydown", handleGlobalSearch);
-    return () => window.removeEventListener("keydown", handleGlobalSearch);
-  }, []);
+    document.addEventListener("keydown", handleGlobalSearch);
+    return () => document.removeEventListener("keydown", handleGlobalSearch);
+  }, [isSearchOpen]);
 
   return (
     <ThemeProvider>

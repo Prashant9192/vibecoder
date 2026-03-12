@@ -43,6 +43,10 @@ export default function MonacoEditor() {
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
         });
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', shiftKey: true, ctrlKey: true }));
+        });
     };
 
     useEffect(() => {
