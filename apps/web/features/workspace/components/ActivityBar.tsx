@@ -1,9 +1,9 @@
 "use client";
 
 import { useTheme } from "@/features/theme/context/ThemeContext";
-import { Copy, MessageSquare, Settings, Sun, Moon } from "lucide-react";
+import { Copy, MessageSquare, Settings, Sun, Moon, Search } from "lucide-react";
 
-export default function ActivityBar() {
+export default function ActivityBar({ onSearchClick }: { onSearchClick: () => void }) {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -11,6 +11,9 @@ export default function ActivityBar() {
       <div className="flex flex-col gap-6 w-full items-center">
         <button className="cursor-pointer text-zinc-900 dark:text-zinc-100 transition-colors border-l-2 border-zinc-900 dark:border-zinc-100 pl-[0px] w-full flex justify-center">
           <Copy strokeWidth={1.5} size={24} />
+        </button>
+        <button className="cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors" onClick={onSearchClick}>
+          <Search size={20} />
         </button>
         <button className="cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
           <MessageSquare strokeWidth={1.5} size={24} />

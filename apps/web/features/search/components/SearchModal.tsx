@@ -25,8 +25,7 @@ type SearchResult = {
   matchLength: number;
 };
 
-export function SearchModal() {
-  const [open, setOpen] = useState(false);
+export function SearchModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   
@@ -82,20 +81,8 @@ export function SearchModal() {
     return () => clearTimeout(searchTimer);
   }, [query, fileSystemFiles, flattenTree]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "f" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   const handleSelect = (filePath: string, lineNumber: number) => {
-    setOpen(false);
+    onOpenChange(false);
     
     // Add to editor files if not already there
     if (!editorFiles[filePath]) {
@@ -122,7 +109,7 @@ export function SearchModal() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="top-[20%] max-w-2xl p-0 overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[60vh] !rounded-xl" showCloseButton={false}>
         <div className="flex items-center px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
           <Search className="w-4 h-4 text-zinc-400 mr-2 shrink-0" />

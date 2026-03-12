@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/features/theme/context/ThemeContext";
 
 export default function WorkspaceLayout() {
   const [explorerWidth, setExplorerWidth] = useState(260);
+  const [isSearchOpen, setSearchOpen] = useState(false);
   const isDragging = useRef(false);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -47,13 +48,24 @@ export default function WorkspaceLayout() {
     };
   }, [resize, stopResizing]);
 
+  useEffect(() => {
+    const handleGlobalSearch = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalSearch);
+    return () => window.removeEventListener("keydown", handleGlobalSearch);
+  }, []);
+
   return (
     <ThemeProvider>
       <FileSystemProvider>
         <EditorProvider>
           <div className="flex flex-col h-screen overflow-hidden text-black dark:text-white bg-white dark:bg-zinc-900">
             <div className="flex flex-1 min-h-0">
-              <ActivityBar />
+              <ActivityBar onSearchClick={() => setSearchOpen(true)} />
               <Explorer width={explorerWidth} />
               <div 
                 className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
@@ -64,7 +76,7 @@ export default function WorkspaceLayout() {
             </div>
             <StatusBar />
             <CommandPalette />
-            <SearchModal />
+            <SearchModal isOpen={isSearchOpen} onOpenChange={setSearchOpen} />
           </div>
         </EditorProvider>
       </FileSystemProvider>
