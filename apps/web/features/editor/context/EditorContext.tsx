@@ -7,6 +7,7 @@ interface EditorContextType {
     openFiles: string[];
     files: Record<string, string>;
     unsavedFiles: string[];
+    recentFiles: string[];
     cursorPosition: { lineNumber: number, column: number } | null;
     setActiveFile: (file: string | null) => void;
     setOpenFiles: (files: string[]) => void;
@@ -22,7 +23,18 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const [openFiles, setOpenFiles] = useState<string[]>([]);
     const [files, setFiles] = useState<Record<string, string>>({});
     const [unsavedFiles, setUnsavedFiles] = useState<string[]>([]);
+    const [recentFiles, setRecentFiles] = useState<string[]>([]);
     const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number, column: number } | null>(null);
+
+    const handleSetActiveFile = (file: string | null) => {
+        setActiveFile(file);
+        if (file) {
+            setRecentFiles(prev => {
+                const filtered = prev.filter(f => f !== file);
+                return [file, ...filtered].slice(0, 10);
+            });
+        }
+    };
 
     return (
         <EditorContext.Provider
@@ -31,8 +43,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
                 openFiles,
                 files,
                 unsavedFiles,
+                recentFiles,
                 cursorPosition,
-                setActiveFile,
+                setActiveFile: handleSetActiveFile,
                 setOpenFiles,
                 setFiles,
                 setUnsavedFiles,

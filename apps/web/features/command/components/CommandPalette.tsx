@@ -26,7 +26,7 @@ const getFileIcon = (name: string) => {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const { files: fileSystemFiles } = useFileSystemContext();
-  const { setActiveFile, setFiles, files: editorFiles, openFiles, setOpenFiles } = useEditor();
+  const { setActiveFile, setFiles, files: editorFiles, openFiles, setOpenFiles, recentFiles } = useEditor();
   const [flattenedFiles, setFlattenedFiles] = useState<{ path: string; name: string }[]>([]);
 
   // Recursively extract all file nodes into a flat array
@@ -82,18 +82,42 @@ export function CommandPalette() {
       <CommandInput placeholder="Search files..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Files">
-          {flattenedFiles.map((file) => (
-            <CommandItem
-              key={file.path}
-              value={file.name + " " + file.path} // search on name and path
-              onSelect={() => handleSelect(file.path)}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              {getFileIcon(file.name)}
-              <span>{file.name}</span>
-              <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-auto">{file.path}</span>
-            </CommandItem>
+        
+        {recentFiles.length > 0 && (
+          <CommandGroup heading="Recent Files">
+            {recentFiles.map((path) => {
+              const file = flattenedFiles.find((f) => f.path === path);
+              if (!file) return null;
+              return (
+                <CommandItem
+                  key={`recent-${file.path}`}
+                  value={file.name + " " + file.path + " recent"}
+                  onSelect={() => handleSelect(file.path)}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  {getFileIcon(file.name)}
+                  <span>{file.name}</span>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-auto">{file.path}</span>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+
+        <CommandGroup heading="All Files">
+          {flattenedFiles
+            .filter((file) => !recentFiles.includes(file.path))
+            .map((file) => (
+              <CommandItem
+                key={`all-${file.path}`}
+                value={file.name + " " + file.path} // search on name and path
+                onSelect={() => handleSelect(file.path)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                {getFileIcon(file.name)}
+                <span>{file.name}</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-auto">{file.path}</span>
+              </CommandItem>
           ))}
         </CommandGroup>
       </CommandList>
