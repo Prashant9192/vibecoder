@@ -26,7 +26,7 @@ const getFileIcon = (name: string) => {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const { files: fileSystemFiles } = useFileSystemContext();
-  const { setActiveFile, setFiles, files: editorFiles, openFiles, setOpenFiles, recentFiles } = useEditor();
+  const { openFile, setFiles, files: editorFiles, recentFiles } = useEditor();
   const [flattenedFiles, setFlattenedFiles] = useState<{ path: string; name: string }[]>([]);
 
   // Recursively extract all file nodes into a flat array
@@ -68,13 +68,8 @@ export function CommandPalette() {
       });
     }
 
-    // Set as active file
-    setActiveFile(filePath);
-
-    // Add to open tabs if not already opened
-    if (!openFiles.includes(filePath)) {
-      setOpenFiles([...openFiles, filePath]);
-    }
+    // Set as active file via context abstraction natively
+    openFile(filePath);
   };
 
   return (

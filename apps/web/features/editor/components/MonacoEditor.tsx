@@ -7,8 +7,8 @@ import { useFileSystemContext } from "@/features/filesystem/context/FileSystemCo
 import { useEffect, useRef } from "react";
 
 export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}) {
-    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
-    const targetFile = fileId !== undefined ? fileId : activeFile;
+    const { files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
+    const targetFile = fileId ?? null;
     const { theme } = useTheme();
     const { saveFile } = useFileSystemContext();
     const monaco = useMonaco();

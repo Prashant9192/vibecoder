@@ -30,7 +30,7 @@ export function SearchModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenC
   const [results, setResults] = useState<SearchResult[]>([]);
   
   const { files: fileSystemFiles } = useFileSystemContext();
-  const { setActiveFile, setFiles, files: editorFiles, openFiles, setOpenFiles, setLineToReveal } = useEditor();
+  const { openFile, setFiles, files: editorFiles, setLineToReveal } = useEditor();
 
   // Recursively extract all files with their contents
   const flattenTree = useCallback((nodes: FileNode[], result: { path: string; name: string; content: string }[] = []) => {
@@ -94,13 +94,8 @@ export function SearchModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenC
       });
     }
 
-    // Set as active file
-    setActiveFile(filePath);
-
-    // Add to open tabs if not already opened
-    if (!openFiles.includes(filePath)) {
-      setOpenFiles([...openFiles, filePath]);
-    }
+    // Set as active file via the group context natively handler
+    openFile(filePath);
 
     // Trigger line reveal safely after state updates
     setTimeout(() => {

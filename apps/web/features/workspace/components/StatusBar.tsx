@@ -13,7 +13,8 @@ const getLanguage = (fileName: string) => {
 };
 
 export default function StatusBar() {
-    const { activeFile, cursorPosition } = useEditor();
+    const { editorGroups, activeGroup, cursorPosition } = useEditor();
+    const activeFile = editorGroups[activeGroup].activeFile;
 
     const fileName = activeFile ? activeFile.split('/').pop() : "";
     const language = activeFile ? getLanguage(activeFile) : "";

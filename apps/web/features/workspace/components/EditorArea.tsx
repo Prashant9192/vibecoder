@@ -6,7 +6,7 @@ import { useEditor } from "@/features/editor/context/EditorContext";
 import { useState, useCallback, useRef, useEffect } from "react";
 
 export default function EditorArea() {
-  const { isSplitView, rightFileId, activeFile } = useEditor();
+  const { isSplitView, editorGroups, setActiveGroup } = useEditor();
   const [splitWidth, setSplitWidth] = useState(50); // percentage
   const isDragging = useRef(false);
 
@@ -45,10 +45,14 @@ export default function EditorArea() {
 
   return (
     <div className="flex flex-col flex-1 min-w-0 bg-white dark:bg-zinc-950">
-      <EditorTabs />
-      <div id="editor-split-container" className="flex flex-1 min-h-0 min-w-0">
-        <div style={{ width: isSplitView ? `${splitWidth}%` : '100%' }} className="relative h-full flex flex-col min-w-0 overflow-hidden">
-          <MonacoEditor fileId={activeFile} />
+      <div id="editor-split-container" className="flex flex-1 min-h-0 min-w-0 flex-row">
+        
+        {/* Left Group */}
+        <div style={{ width: isSplitView ? `${splitWidth}%` : '100%' }} className="relative h-full flex flex-col min-w-0 overflow-hidden" onClick={() => setActiveGroup("left")}>
+          <EditorTabs group="left" />
+          <div className="flex-1 w-full relative">
+             <MonacoEditor fileId={editorGroups.left.activeFile} />
+          </div>
         </div>
         
         {isSplitView && (
@@ -58,9 +62,13 @@ export default function EditorArea() {
           />
         )}
 
+        {/* Right Group */}
         {isSplitView && (
-          <div style={{ width: `${100 - splitWidth}%` }} className="relative h-full flex flex-col min-w-0 overflow-hidden">
-            <MonacoEditor fileId={rightFileId} />
+          <div style={{ width: `${100 - splitWidth}%` }} className="relative h-full flex flex-col min-w-0 overflow-hidden border-l border-zinc-200 dark:border-zinc-800" onClick={() => setActiveGroup("right")}>
+            <EditorTabs group="right" />
+            <div className="flex-1 w-full relative">
+                <MonacoEditor fileId={editorGroups.right.activeFile} />
+            </div>
           </div>
         )}
       </div>
