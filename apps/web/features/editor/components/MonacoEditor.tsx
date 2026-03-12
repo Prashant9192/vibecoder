@@ -7,7 +7,7 @@ import { useFileSystemContext } from "@/features/filesystem/context/FileSystemCo
 import { useEffect, useRef } from "react";
 
 export default function MonacoEditor() {
-    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles } = useEditor();
+    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition } = useEditor();
     const { theme } = useTheme();
     const { saveFile } = useFileSystemContext();
     const monaco = useMonaco();
@@ -22,10 +22,25 @@ export default function MonacoEditor() {
 
     const handleMount = (editor: any, monaco: Monaco) => {
         editorRef.current = editor;
+        
+        // Listen to cursor position changes
+        editor.onDidChangeCursorPosition((e: any) => {
+            setCursorPosition({
+                lineNumber: e.position.lineNumber,
+                column: e.position.column
+            });
+        });
+
+        // Initialize state on first mount
+        const initialPos = editor.getPosition();
+        if (initialPos) {
+            setCursorPosition({
+                lineNumber: initialPos.lineNumber,
+                column: initialPos.column
+            });
+        }
+        
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            // Need to use the latest state, so we trigger a custom event or use ref trick? 
-            // Monaco commands get captured. We can instead register global window listener if this is stale. 
-            // But let's let Monaco capture the keydown and we'll dispatch a custom event.
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
         });
     };

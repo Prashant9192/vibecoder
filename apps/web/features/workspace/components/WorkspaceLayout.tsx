@@ -5,6 +5,7 @@ import ActivityBar from "./ActivityBar";
 import Explorer from "./Explorer";
 import EditorArea from "./EditorArea";
 import ChatPanel from "./ChatPanel";
+import StatusBar from "./StatusBar";
 import { CommandPalette } from "@/features/command/components/CommandPalette";
 import { EditorProvider } from "@/features/editor/context/EditorContext";
 import { FileSystemProvider } from "@/features/filesystem/context/FileSystemContext";
@@ -49,15 +50,18 @@ export default function WorkspaceLayout() {
     <ThemeProvider>
       <FileSystemProvider>
         <EditorProvider>
-          <div className="flex h-screen overflow-hidden text-black dark:text-white bg-white dark:bg-zinc-900">
-            <ActivityBar />
-            <Explorer width={explorerWidth} />
-            <div 
-              className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
-              onMouseDown={startResizing}
-            />
-            <EditorArea />
-            <ChatPanel />
+          <div className="flex flex-col h-screen overflow-hidden text-black dark:text-white bg-white dark:bg-zinc-900">
+            <div className="flex flex-1 min-h-0">
+              <ActivityBar />
+              <Explorer width={explorerWidth} />
+              <div 
+                className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
+                onMouseDown={startResizing}
+              />
+              <EditorArea />
+              <ChatPanel />
+            </div>
+            <StatusBar />
             <CommandPalette />
           </div>
         </EditorProvider>
