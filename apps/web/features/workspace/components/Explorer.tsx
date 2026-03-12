@@ -29,6 +29,7 @@ export default function Explorer() {
   const [renamingNode, setRenamingNode] = useState<{ path: string, initialName: string } | null>(null);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOverPath, setDragOverPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (creatingNode || renamingNode) {
@@ -211,6 +212,42 @@ export default function Explorer() {
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, nodePath: string) => {
+    e.dataTransfer.setData("application/vnd.vibecoder.file", nodePath);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, nodePath: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverPath !== nodePath) {
+      setDragOverPath(nodePath);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverPath(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetFolderPath: string) => {
+    e.preventDefault();
+    setDragOverPath(null);
+
+    const sourcePath = e.dataTransfer.getData("application/vnd.vibecoder.file");
+    if (!sourcePath || sourcePath === targetFolderPath) return;
+
+    // Prevent folder from dropping into its own child
+    if (targetFolderPath.startsWith(sourcePath + "/")) return;
+
+    // Prevent drop if it's already in this folder
+    const sourceParent = sourcePath.substring(0, sourcePath.lastIndexOf("/"));
+    if (sourceParent === targetFolderPath) return;
+
+    moveFile(sourcePath, targetFolderPath);
+    setExpanded((prev) => ({ ...prev, [targetFolderPath]: true }));
+  };
+
   const toggleFolder = (folderName: string) => {
     setExpanded((prev) => ({
       ...prev,
@@ -247,6 +284,8 @@ export default function Explorer() {
         <ContextMenu key={node.path}>
           <ContextMenuTrigger asChild>
             <li
+              draggable
+              onDragStart={(e) => handleDragStart(e, node.path)}
               style={padStyle}
               className={`group flex items-center justify-between py-1 cursor-pointer transition-colors text-[13px] select-none ${
                 activeFile === node.path
@@ -304,8 +343,15 @@ export default function Explorer() {
           <div className="mb-[2px]">
             <ContextMenuTrigger asChild>
               <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, node.path)}
+                onDragOver={(e) => handleDragOver(e, node.path)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, node.path)}
                 style={padStyle}
-                className="group flex items-center justify-between py-1 cursor-pointer text-[13px] text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors select-none"
+                className={`group flex items-center justify-between py-1 cursor-pointer text-[13px] text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors select-none ${
+                  dragOverPath === node.path ? "!bg-zinc-200 dark:!bg-zinc-800" : ""
+                }`}
                 onClick={() => toggleFolder(node.path)}
               >
                 <div className="flex items-center gap-1 flex-1 min-w-0">
