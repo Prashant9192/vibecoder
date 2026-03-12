@@ -9,6 +9,7 @@ import StatusBar from "./StatusBar";
 import { CommandPalette } from "@/features/command/components/CommandPalette";
 import { SearchModal } from "@/features/search/components/SearchModal";
 import { GitPanel } from "@/features/git/components/GitPanel";
+import { ProblemsPanel } from "@/features/problems/components/ProblemsPanel";
 import { EditorProvider } from "@/features/editor/context/EditorContext";
 import { FileSystemProvider } from "@/features/filesystem/context/FileSystemContext";
 import { ThemeProvider } from "@/features/theme/context/ThemeContext";
@@ -22,6 +23,7 @@ export default function WorkspaceLayout() {
   const [explorerWidth, setExplorerWidth] = useState(260);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [bottomTab, setBottomTab] = useState<"terminal" | "problems">("terminal");
   const [activePanel, setActivePanel] = useState<"explorer" | "git">("explorer");
   const isDragging = useRef(false);
 
@@ -107,7 +109,44 @@ export default function WorkspaceLayout() {
                   <EditorArea />
                   <ChatPanel />
                 </div>
-                {isTerminalOpen && <TerminalPanel onClose={() => setIsTerminalOpen(false)} />}
+                {/* Bottom panel: shared tabs header + panel body */}
+                {isTerminalOpen && (
+                  <div className="flex flex-col flex-shrink-0">
+                    {/* Tab bar */}
+                    <div className="flex items-center h-8 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 gap-1">
+                      <button
+                        onClick={() => setBottomTab("terminal")}
+                        className={`px-3 h-full text-[11px] tracking-wide font-medium border-b-2 transition-colors ${
+                          bottomTab === "terminal"
+                            ? "border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100"
+                            : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                        }`}
+                      >
+                        Terminal
+                      </button>
+                      <button
+                        onClick={() => setBottomTab("problems")}
+                        className={`px-3 h-full text-[11px] tracking-wide font-medium border-b-2 transition-colors ${
+                          bottomTab === "problems"
+                            ? "border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100"
+                            : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                        }`}
+                      >
+                        Problems
+                      </button>
+                      <button
+                        onClick={() => setIsTerminalOpen(false)}
+                        className="ml-auto text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs px-1"
+                        title="Close panel"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {/* Panel body */}
+                    {bottomTab === "terminal" && <TerminalPanel onClose={() => setIsTerminalOpen(false)} />}
+                    {bottomTab === "problems" && <ProblemsPanel onClose={() => setIsTerminalOpen(false)} />}
+                  </div>
+                )}
               </div>
             </div>
             <StatusBar />
