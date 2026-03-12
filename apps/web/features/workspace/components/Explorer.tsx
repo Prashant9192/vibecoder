@@ -4,6 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { FilePlus, FolderPlus, FolderInput, Pencil, Trash, ChevronRight, ChevronDown, Folder, FolderOpen, FileCode, FileJson, FileText, File } from "lucide-react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 const getFileIcon = (name: string) => {
   if (name.endsWith('.ts') || name.endsWith('.tsx')) return <FileCode size={14} className="flex-shrink-0 text-[#3178C6]" />;
@@ -237,90 +244,115 @@ export default function Explorer() {
 
     if (node.type === "file") {
       return (
-        <li
-          key={node.path}
-          style={padStyle}
-          className={`group flex items-center justify-between py-1 cursor-pointer transition-colors text-[13px] select-none ${
-            activeFile === node.path
-              ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
-              : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
-            }`}
-          onClick={() => openFile(node)}
-        >
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            {getFileIcon(node.name)}
-            <span className="truncate leading-none pt-0.5">{node.name}</span>
-          </div>
+        <ContextMenu key={node.path}>
+          <ContextMenuTrigger asChild>
+            <li
+              style={padStyle}
+              className={`group flex items-center justify-between py-1 cursor-pointer transition-colors text-[13px] select-none ${
+                activeFile === node.path
+                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
+                }`}
+              onClick={() => openFile(node)}
+            >
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                {getFileIcon(node.name)}
+                <span className="truncate leading-none pt-0.5">{node.name}</span>
+              </div>
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => handleMove(e, node.path, node.name)}
-              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
-              title="Move"
-            >
-              <FolderInput size={14} />
-            </button>
-            <button
-              onClick={(e) => startRenaming(e, node.path, node.name)}
-              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
-              title="Rename"
-            >
-              <Pencil size={14} />
-            </button>
-            <button
-              onClick={(e) => handleDelete(e, node.path, node.name)}
-              className="text-zinc-500 dark:text-zinc-400 hover:text-[#FF0000] transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
-              title="Delete"
-            >
-              <Trash size={14} />
-            </button>
-          </div>
-        </li>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => handleMove(e, node.path, node.name)}
+                  className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
+                  title="Move"
+                >
+                  <FolderInput size={14} />
+                </button>
+                <button
+                  onClick={(e) => startRenaming(e, node.path, node.name)}
+                  className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
+                  title="Rename"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={(e) => handleDelete(e, node.path, node.name)}
+                  className="text-zinc-500 dark:text-zinc-400 hover:text-[#FF0000] transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
+                  title="Delete"
+                >
+                  <Trash size={14} />
+                </button>
+              </div>
+            </li>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48 text-[13px] rounded-lg">
+            <ContextMenuItem onClick={(e) => { e.stopPropagation(); openFile(node); }}>Open</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={(e) => { e.stopPropagation(); startRenaming(e, node.path, node.name); }}>Rename</ContextMenuItem>
+            <ContextMenuItem onClick={(e) => handleMove(e, node.path, node.name)}>Move</ContextMenuItem>
+            <ContextMenuItem onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(node.path); }}>Copy Path</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={(e) => handleDelete(e, node.path, node.name)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/30">Delete</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       );
     } else if (node.type === "folder") {
       const isExpanded = expanded[node.path] ?? true;
 
       return (
-        <div key={node.path} className="mb-[2px]">
-          <div
-            style={padStyle}
-            className="group flex items-center justify-between py-1 cursor-pointer text-[13px] text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors select-none"
-            onClick={() => toggleFolder(node.path)}
-          >
-            <div className="flex items-center gap-1 flex-1 min-w-0">
-              <span className="text-zinc-500 dark:text-zinc-400 flex-shrink-0">
-                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </span>
-              <span className="text-zinc-500 dark:text-zinc-400 flex-shrink-0">
-                {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
-              </span>
-              <span className="truncate leading-none pt-0.5">{node.name}</span>
-            </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => startCreating(e, "file", node.path)}
-                className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
-                title="New File inside folder"
+        <ContextMenu key={node.path}>
+          <div className="mb-[2px]">
+            <ContextMenuTrigger asChild>
+              <div
+                style={padStyle}
+                className="group flex items-center justify-between py-1 cursor-pointer text-[13px] text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors select-none"
+                onClick={() => toggleFolder(node.path)}
               >
-                <FilePlus size={14} />
-              </button>
-              <button
-                onClick={(e) => startCreating(e, "folder", node.path)}
-                className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
-                title="New Folder inside folder"
-              >
-                <FolderPlus size={14} />
-              </button>
-            </div>
-          </div>
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  <span className="text-zinc-500 dark:text-zinc-400 flex-shrink-0">
+                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </span>
+                  <span className="text-zinc-500 dark:text-zinc-400 flex-shrink-0">
+                    {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+                  </span>
+                  <span className="truncate leading-none pt-0.5">{node.name}</span>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => startCreating(e, "file", node.path)}
+                    className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
+                    title="New File inside folder"
+                  >
+                    <FilePlus size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => startCreating(e, "folder", node.path)}
+                    className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
+                    title="New Folder inside folder"
+                  >
+                    <FolderPlus size={14} />
+                  </button>
+                </div>
+              </div>
+            </ContextMenuTrigger>
 
-          {isExpanded && node.children && (
-            <ul className="flex flex-col">
-              {node.children.map((child) => renderNode(child, depth + 1))}
-              {renderCreatingInput(node.path, depth + 1)}
-            </ul>
-          )}
-        </div>
+            <ContextMenuContent className="w-48 text-[13px] rounded-lg">
+              <ContextMenuItem onClick={(e) => startCreating(e, "file", node.path)}>New File</ContextMenuItem>
+              <ContextMenuItem onClick={(e) => startCreating(e, "folder", node.path)}>New Folder</ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={(e) => startRenaming(e, node.path, node.name)}>Rename</ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={(e) => handleDelete(e, node.path, node.name)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/30">Delete</ContextMenuItem>
+            </ContextMenuContent>
+
+            {isExpanded && node.children && (
+              <ul className="flex flex-col">
+                {node.children.map((child) => renderNode(child, depth + 1))}
+                {renderCreatingInput(node.path, depth + 1)}
+              </ul>
+            )}
+          </div>
+        </ContextMenu>
       );
     }
   };
