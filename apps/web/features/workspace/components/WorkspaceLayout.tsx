@@ -11,10 +11,16 @@ import { SearchModal } from "@/features/search/components/SearchModal";
 import { EditorProvider } from "@/features/editor/context/EditorContext";
 import { FileSystemProvider } from "@/features/filesystem/context/FileSystemContext";
 import { ThemeProvider } from "@/features/theme/context/ThemeContext";
+import dynamic from "next/dynamic";
+
+const TerminalPanel = dynamic(() => import("@/features/terminal/components/TerminalPanel").then(mod => mod.TerminalPanel), { 
+  ssr: false 
+});
 
 export default function WorkspaceLayout() {
   const [explorerWidth, setExplorerWidth] = useState(260);
   const [isSearchOpen, setSearchOpen] = useState(false);
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const isDragging = useRef(false);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -61,6 +67,18 @@ export default function WorkspaceLayout() {
     return () => document.removeEventListener("keydown", handleGlobalSearch);
   }, [isSearchOpen]);
 
+  useEffect(() => {
+    const handleTerminalToggle = (e: KeyboardEvent) => {
+      // Ctrl + ` (backtick)
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+        e.preventDefault();
+        setIsTerminalOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleTerminalToggle);
+    return () => document.removeEventListener("keydown", handleTerminalToggle);
+  }, []);
+
   return (
     <ThemeProvider>
       <FileSystemProvider>
@@ -73,8 +91,13 @@ export default function WorkspaceLayout() {
                 className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
                 onMouseDown={startResizing}
               />
-              <EditorArea />
-              <ChatPanel />
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                <div className="flex flex-1 min-h-0">
+                  <EditorArea />
+                  <ChatPanel />
+                </div>
+                {isTerminalOpen && <TerminalPanel onClose={() => setIsTerminalOpen(false)} />}
+              </div>
             </div>
             <StatusBar />
             <CommandPalette />
