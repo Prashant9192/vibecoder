@@ -14,6 +14,7 @@ import { EditorProvider } from "@/features/editor/context/EditorContext";
 import { FileSystemProvider } from "@/features/filesystem/context/FileSystemContext";
 import { ThemeProvider } from "@/features/theme/context/ThemeContext";
 import dynamic from "next/dynamic";
+import { ideLog } from "@/lib/ideLogger";
 
 const TerminalPanel = dynamic(() => import("@/features/terminal/components/TerminalPanel").then(mod => mod.TerminalPanel), { 
   ssr: false 
@@ -76,7 +77,11 @@ export default function WorkspaceLayout() {
       // Ctrl + ` (backtick)
       if ((e.ctrlKey || e.metaKey) && e.key === "`") {
         e.preventDefault();
-        setIsTerminalOpen((prev) => !prev);
+        setIsTerminalOpen((prev) => {
+          const next = !prev;
+          ideLog("TERMINAL_TOGGLE", { open: next, source: "shortcut" });
+          return next;
+        });
       }
     };
     document.addEventListener("keydown", handleTerminalToggle);
@@ -92,6 +97,7 @@ export default function WorkspaceLayout() {
               <ActivityBar
                 onSearchClick={() => setSearchOpen(true)}
                 onGitClick={() => setActivePanel(p => p === "git" ? "explorer" : "git")}
+                onExplorerClick={() => setActivePanel("explorer")}
                 activePanel={activePanel}
               />
               {activePanel === "explorer" && <Explorer width={explorerWidth} />}
@@ -135,7 +141,10 @@ export default function WorkspaceLayout() {
                         Problems
                       </button>
                       <button
-                        onClick={() => setIsTerminalOpen(false)}
+                      onClick={() => {
+                        ideLog("TERMINAL_TOGGLE", { open: false, source: "button" });
+                        setIsTerminalOpen(false);
+                      }}
                         className="ml-auto text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs px-1"
                         title="Close panel"
                       >

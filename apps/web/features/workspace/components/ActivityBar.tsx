@@ -6,10 +6,12 @@ import { Copy, MessageSquare, Settings, Sun, Moon, Search, GitBranch } from "luc
 export default function ActivityBar({
   onSearchClick,
   onGitClick,
+  onExplorerClick,
   activePanel,
 }: {
   onSearchClick: () => void;
   onGitClick: () => void;
+  onExplorerClick: () => void;
   activePanel: "explorer" | "git" | null;
 }) {
   const { theme, toggleTheme } = useTheme();
@@ -19,7 +21,7 @@ export default function ActivityBar({
       <div className="flex flex-col gap-6 w-full items-center">
         <button
           title="Explorer"
-          onClick={() => {}}
+          onClick={onExplorerClick}
           className={`cursor-pointer transition-colors border-l-2 w-full flex justify-center ${
             activePanel === "explorer"
               ? "text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100"

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { ideLog } from "@/lib/ideLogger";
 
 export interface EditorGroup {
     tabs: string[];
@@ -66,6 +67,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
                 const filtered = prev.filter(f => f !== file);
                 return [file, ...filtered].slice(0, 10);
             });
+            ideLog("TAB_SWITCH", { path: file, group: targetGroup });
         }
     }, [activeGroup]);
 
@@ -98,6 +100,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
             const filtered = prev.filter(f => f !== fileId);
             return [fileId, ...filtered].slice(0, 10);
         });
+
+        ideLog("FILE_OPEN", { path: fileId, group: targetGroup });
     }, [activeGroup]);
 
     return (

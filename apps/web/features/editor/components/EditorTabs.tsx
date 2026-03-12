@@ -3,17 +3,22 @@
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ideLog } from "@/lib/ideLogger";
 
 export default function EditorTabs({ group }: { group: "left" | "right" }) {
   const { editorGroups, setActiveFile, setTabs, unsavedFiles, activeGroup, setActiveGroup } = useEditor();
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
 
-  const tabs = editorGroups[group].tabs;
-  const activeFile = editorGroups[group].activeFile;
+  // Guard against undefined during SSR/hydration window
+  const groupData = editorGroups?.[group] ?? { tabs: [], activeFile: null };
+  const tabs = groupData.tabs;
+  const activeFile = groupData.activeFile;
   const isActiveGroup = activeGroup === group;
 
   const handleClose = (e: React.MouseEvent, fileName: string) => {
     e.stopPropagation();
+
+    ideLog("TAB_CLOSE", { path: fileName, group });
 
     const newTabs = tabs.filter((file) => file !== fileName);
     setTabs(newTabs, group);
@@ -37,6 +42,7 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
         e.preventDefault();
         if (activeFile) {
+          ideLog("TAB_CLOSE", { path: activeFile, group, source: "shortcut" });
           const newTabs = tabs.filter((file) => file !== activeFile);
           setTabs(newTabs, group);
 
@@ -93,7 +99,11 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
           onDragStart={(e) => handleDragStart(e, file)}
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, file)}
-          onClick={(e) => { e.stopPropagation(); setActiveFile(file, group); setActiveGroup(group); }}
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            setActiveFile(file, group); 
+            setActiveGroup(group); 
+          }}
           className={`group flex items-center gap-2 px-3 py-2 min-w-max cursor-pointer text-[13px] border-t-2 select-none ${
             activeFile === file
               ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-[#FF0000] dark:border-[#FF0000]"

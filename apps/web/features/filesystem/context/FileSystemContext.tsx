@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState } from "react";
+import { ideLog } from "@/lib/ideLogger";
 
 export type FileNode = {
     name: string;
@@ -63,10 +64,24 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
+    // Recursively update all descendant paths when a parent path changes
+    const rebaseChildPaths = (node: FileNode, oldParentPath: string, newParentPath: string): FileNode => {
+        const newPath = newParentPath + node.path.slice(oldParentPath.length);
+        if (node.type === "folder" && node.children) {
+            return {
+                ...node,
+                path: newPath,
+                children: node.children.map(child => rebaseChildPaths(child, oldParentPath, newParentPath))
+            };
+        }
+        return { ...node, path: newPath };
+    };
+
     const addFile = (fileName: string, parentPath: string = "/src") => {
         setFiles(prevFiles => updateNodeInTree(prevFiles, parentPath, folder => {
             if (folder.children?.some(f => f.name === fileName)) return folder;
             const newPath = `${folder.path}/${fileName}`;
+            ideLog("FILE_CREATE", { path: newPath, parentPath });
             return {
                 ...folder,
                 children: [...(folder.children || []), { name: fileName, path: newPath, type: "file", content: "" }]
@@ -78,6 +93,7 @@ console.log(greet("VibeCoder"));`,
         setFiles(prevFiles => updateNodeInTree(prevFiles, parentPath, folder => {
             if (folder.children?.some(f => f.name === newFolderName)) return folder;
             const newPath = `${folder.path}/${newFolderName}`;
+            ideLog("FOLDER_CREATE", { path: newPath, parentPath });
             return {
                 ...folder,
                 children: [...(folder.children || []), { name: newFolderName, path: newPath, type: "folder", children: [] }]
@@ -89,10 +105,17 @@ console.log(greet("VibeCoder"));`,
         setFiles(prevFiles => {
             const renameInTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {
-                    if (node.path === path) { // Found exact match to rename
-                       // If folder, technically we need to recursively update children paths. Keeping simple for now since renaming folders isn't explicitly required yet, but let's handle file rename properly.
+                    if (node.path === path) {
                         const parentPath = path.substring(0, path.lastIndexOf('/'));
                         const newPath = `${parentPath}/${newName}`;
+                        ideLog("FILE_RENAME", { oldPath: path, newPath });
+                        if (node.type === "folder" && node.children) {
+                            // Recursively rebase all children to the new parent path
+                            const rebasedChildren = node.children.map(child =>
+                                rebaseChildPaths(child, node.path, newPath)
+                            );
+                            return { ...node, name: newName, path: newPath, children: rebasedChildren };
+                        }
                         return { ...node, name: newName, path: newPath };
                     }
                     if (node.type === "folder" && node.children) {
@@ -106,6 +129,7 @@ console.log(greet("VibeCoder"));`,
     };
 
     const deleteFile = (path: string) => {
+        ideLog("FILE_DELETE", { path });
         setFiles(prevFiles => {
             const deleteFromTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.filter(node => node.path !== path).map(node => {
@@ -151,9 +175,22 @@ console.log(greet("VibeCoder"));`,
 
             if (!fileToMove) return prevFiles;
 
-            // Recalculate path based on new parent
+            // Recalculate path based on new parent, and rebase all children if it's a folder
             const newPath = targetParentPath === "" ? `/${fileToMove.name}` : `${targetParentPath}/${fileToMove.name}`;
-            const updatedFileToMove = { ...fileToMove, path: newPath };
+            let updatedFileToMove: FileNode;
+            if (fileToMove.type === "folder" && fileToMove.children) {
+                updatedFileToMove = {
+                    ...fileToMove,
+                    path: newPath,
+                    children: fileToMove.children.map(child =>
+                        rebaseChildPaths(child, fileToMove!.path, newPath)
+                    )
+                };
+            } else {
+                updatedFileToMove = { ...fileToMove, path: newPath };
+            }
+
+            ideLog("FILE_MOVE", { oldPath: sourcePath, newPath, targetParentPath });
 
             const addFileToTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {
@@ -180,6 +217,7 @@ console.log(greet("VibeCoder"));`,
     };
 
     const saveFile = (path: string, content: string) => {
+        ideLog("FILE_SAVE", { path });
         setFiles(prevFiles => {
             const updateInTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {

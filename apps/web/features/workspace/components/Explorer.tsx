@@ -11,6 +11,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { ideLog } from "@/lib/ideLogger";
 
 const getFileIcon = (name: string) => {
   if (name.endsWith('.ts') || name.endsWith('.tsx')) return <FileCode size={14} className="flex-shrink-0 text-[#3178C6]" />;
@@ -23,9 +24,9 @@ const getFileIcon = (name: string) => {
 
 export default function Explorer({ width = 256 }: { width?: number }) {
   const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
-  const { editorGroups, activeGroup, openFile, files, setFiles, setIsSplitView } = useEditor();
-  const activeFile = editorGroups[activeGroup].activeFile;
-  const openFiles = editorGroups[activeGroup].tabs;
+  const { editorGroups, activeGroup, openFile, files, setFiles, setIsSplitView, setTabs, setActiveFile } = useEditor();
+  const activeFile = editorGroups?.[activeGroup]?.activeFile ?? null;
+  const openFiles = editorGroups?.[activeGroup]?.tabs ?? [];
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [creatingNode, setCreatingNode] = useState<{ parentPath: string, type: "file" | "folder" } | null>(null);
   const [renamingNode, setRenamingNode] = useState<{ path: string, initialName: string } | null>(null);
@@ -168,12 +169,24 @@ export default function Explorer({ width = 256 }: { width?: number }) {
     if (confirmDelete) {
       deleteFile(nodePath);
 
+      // Clean up tabs in BOTH editor groups
+      (["left", "right"] as const).forEach((grp) => {
+        const grpData = editorGroups[grp];
+        if (!grpData) return;
+        const newTabs = grpData.tabs.filter((t) => t !== nodePath);
+        if (newTabs.length !== grpData.tabs.length) {
+          setTabs(newTabs, grp);
+          if (grpData.activeFile === nodePath) {
+            setActiveFile(newTabs.length > 0 ? newTabs[newTabs.length - 1] : null, grp);
+          }
+        }
+      });
+
       if (files[nodePath] !== undefined) {
         const updated = { ...files };
         delete updated[nodePath];
         setFiles(updated);
       }
-      // Note: we let EditorTabs handle removing active/removed files naturally via closed dependencies vs tightly coupling here
     }
   };
 
@@ -303,11 +316,16 @@ export default function Explorer({ width = 256 }: { width?: number }) {
           </ContextMenuTrigger>
           <ContextMenuContent className="w-48 text-[13px] rounded-lg">
             <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleOpenFile(node); }}>Open</ContextMenuItem>
-            <ContextMenuItem onClick={(e) => { 
-               e.stopPropagation(); 
-               handleOpenFile(node, "right"); 
-               setIsSplitView(true); 
-            }}>Open to Side</ContextMenuItem>
+            <ContextMenuItem
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                handleOpenFile(node, "right"); 
+                setIsSplitView(true); 
+                ideLog("EDITOR_SPLIT", { primary: "left", secondary: "right", path: node.path });
+              }}
+            >
+              Open to Side
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={(e) => { e.stopPropagation(); startRenaming(e, node.path, node.name); }}>Rename</ContextMenuItem>
             <ContextMenuItem onClick={(e) => handleMove(e, node.path, node.name)}>Move</ContextMenuItem>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { GitCommit, Plus, Check, FileDiff, FolderGit2 } from "lucide-react";
+import { ideLog } from "@/lib/ideLogger";
 
 type GitFileStatus = {
   path: string;
@@ -71,22 +72,44 @@ export function GitPanel() {
     staged.has(f.path)
   );
 
-  const stageFile = (path: string) =>
-    setStaged((prev) => new Set([...prev, path]));
+  useEffect(() => {
+    if (changedFiles.length > 0 || untrackedFiles.length > 0) {
+      ideLog("GIT_FILE_CHANGE_DETECTED", {
+        modified: changedFiles.length,
+        untracked: untrackedFiles.length,
+      });
+    }
+  }, [changedFiles.length, untrackedFiles.length]);
 
-  const unstageFile = (path: string) =>
+  const stageFile = (path: string) => {
+    ideLog("GIT_STAGE", { path });
+    setStaged((prev) => new Set([...prev, path]));
+  };
+
+  const unstageFile = (path: string) => {
+    ideLog("GIT_UNSTAGE", { path });
     setStaged((prev) => {
       const next = new Set(prev);
       next.delete(path);
       return next;
     });
+  };
 
-  const stageAll = () =>
-    setStaged(new Set(allChanged.map((f) => f.path)));
+  const stageAll = () => {
+    const paths = allChanged.map((f) => f.path);
+    if (paths.length) {
+      ideLog("GIT_STAGE_ALL", { paths });
+    }
+    setStaged(new Set(paths));
+  };
 
   const handleCommit = () => {
     if (!commitMessage.trim() || stagedFiles.length === 0) return;
     const message = commitMessage.trim();
+    ideLog("GIT_COMMIT", {
+      message,
+      files: stagedFiles.map((f) => f.path),
+    });
     setCommitted((prev) => [message, ...prev]);
     setStaged(new Set());
     setCommitMessage("");

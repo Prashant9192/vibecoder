@@ -5,6 +5,7 @@ import { useEditor } from "../context/EditorContext";
 import { useTheme } from "@/features/theme/context/ThemeContext";
 import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 import { useEffect, useRef } from "react";
+import { ideLog } from "@/lib/ideLogger";
 
 export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}) {
     const { files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
@@ -19,6 +20,7 @@ export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}
         const currentContent = files[targetFile] || "";
         saveFile(targetFile, currentContent);
         setUnsavedFiles(unsavedFiles.filter(f => f !== targetFile));
+        ideLog("FILE_SAVE", { path: targetFile });
     };
 
     const handleMount = (editor: any, monaco: Monaco) => {
