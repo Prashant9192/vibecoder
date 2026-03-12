@@ -9,11 +9,13 @@ interface EditorContextType {
     unsavedFiles: string[];
     recentFiles: string[];
     cursorPosition: { lineNumber: number, column: number } | null;
+    lineToReveal: number | null;
     setActiveFile: (file: string | null) => void;
     setOpenFiles: (files: string[]) => void;
     setFiles: (files: Record<string, string>) => void;
     setUnsavedFiles: (files: string[]) => void;
     setCursorPosition: (pos: { lineNumber: number, column: number } | null) => void;
+    setLineToReveal: (line: number | null) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const [unsavedFiles, setUnsavedFiles] = useState<string[]>([]);
     const [recentFiles, setRecentFiles] = useState<string[]>([]);
     const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number, column: number } | null>(null);
+    const [lineToReveal, setLineToReveal] = useState<number | null>(null);
 
     const handleSetActiveFile = (file: string | null) => {
         setActiveFile(file);
@@ -45,11 +48,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
                 unsavedFiles,
                 recentFiles,
                 cursorPosition,
+                lineToReveal,
                 setActiveFile: handleSetActiveFile,
                 setOpenFiles,
                 setFiles,
                 setUnsavedFiles,
                 setCursorPosition,
+                setLineToReveal,
             }}
         >
             {children}

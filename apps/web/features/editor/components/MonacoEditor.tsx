@@ -7,7 +7,7 @@ import { useFileSystemContext } from "@/features/filesystem/context/FileSystemCo
 import { useEffect, useRef } from "react";
 
 export default function MonacoEditor() {
-    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition } = useEditor();
+    const { activeFile, files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
     const { theme } = useTheme();
     const { saveFile } = useFileSystemContext();
     const monaco = useMonaco();
@@ -56,6 +56,18 @@ export default function MonacoEditor() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeFile, files, unsavedFiles]); // dependencies so handleSave gets fresh state
+
+    useEffect(() => {
+        if (lineToReveal !== null && editorRef.current) {
+            editorRef.current.revealLineInCenter(lineToReveal);
+            editorRef.current.setPosition({ lineNumber: lineToReveal, column: 1 });
+            // Clean up immediately so we don't accidentally re-trigger
+            setLineToReveal(null);
+            
+            // Focus the editor
+            editorRef.current.focus();
+        }
+    }, [lineToReveal, setLineToReveal]);
 
     if (!activeFile) return null;
 

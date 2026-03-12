@@ -7,6 +7,7 @@ import EditorArea from "./EditorArea";
 import ChatPanel from "./ChatPanel";
 import StatusBar from "./StatusBar";
 import { CommandPalette } from "@/features/command/components/CommandPalette";
+import { SearchModal } from "@/features/search/components/SearchModal";
 import { EditorProvider } from "@/features/editor/context/EditorContext";
 import { FileSystemProvider } from "@/features/filesystem/context/FileSystemContext";
 import { ThemeProvider } from "@/features/theme/context/ThemeContext";
@@ -63,6 +64,7 @@ export default function WorkspaceLayout() {
             </div>
             <StatusBar />
             <CommandPalette />
+            <SearchModal />
           </div>
         </EditorProvider>
       </FileSystemProvider>
