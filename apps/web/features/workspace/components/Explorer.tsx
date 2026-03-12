@@ -21,7 +21,7 @@ const getFileIcon = (name: string) => {
   return <File size={14} className="flex-shrink-0 text-zinc-500 dark:text-zinc-400" />;
 };
 
-export default function Explorer() {
+export default function Explorer({ width = 256 }: { width?: number }) {
   const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
   const { activeFile, setActiveFile, files, setFiles, openFiles, setOpenFiles } = useEditor();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -282,7 +282,7 @@ export default function Explorer() {
     if (node.type === "file") {
       return (
         <ContextMenu key={node.path}>
-          <ContextMenuTrigger asChild>
+          <ContextMenuTrigger>
             <li
               draggable
               onDragStart={(e) => handleDragStart(e, node.path)}
@@ -341,7 +341,7 @@ export default function Explorer() {
       return (
         <ContextMenu key={node.path}>
           <div className="mb-[2px]">
-            <ContextMenuTrigger asChild>
+            <ContextMenuTrigger>
               <div
                 draggable
                 onDragStart={(e) => handleDragStart(e, node.path)}
@@ -404,7 +404,10 @@ export default function Explorer() {
   };
 
   return (
-    <div className="w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 py-2 overflow-y-auto">
+    <div 
+      style={{ width, flexShrink: 0 }}
+      className="bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 py-2 overflow-y-auto flex flex-col min-w-0"
+    >
       <div className="flex items-center justify-between mb-2 px-2">
         <h2 className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-400">Explorer</h2>
         <div className="flex items-center gap-2">
