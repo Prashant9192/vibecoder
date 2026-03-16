@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect } from "react";
 import ActivityBar from "./ActivityBar";
 import Explorer from "./Explorer";
 import EditorArea from "./EditorArea";
@@ -20,7 +20,7 @@ const TerminalPanel = dynamic(() => import("@/features/terminal/components/Termi
   ssr: false 
 });
 
-export default function WorkspaceLayout() {
+const WorkspaceLayout = memo(function WorkspaceLayout() {
   const [explorerWidth, setExplorerWidth] = useState(260);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -88,6 +88,16 @@ export default function WorkspaceLayout() {
     return () => document.removeEventListener("keydown", handleTerminalToggle);
   }, []);
 
+  const handleSearchClick = useCallback(() => setSearchOpen(true), []);
+  const handleGitClick = useCallback(() => setActivePanel((p) => (p === "git" ? "explorer" : "git")), []);
+  const handleExplorerClick = useCallback(() => setActivePanel("explorer"), []);
+  const handleTerminalTabClick = useCallback(() => setBottomTab("terminal"), []);
+  const handleProblemsTabClick = useCallback(() => setBottomTab("problems"), []);
+  const handleCloseBottomPanel = useCallback(() => {
+    ideLog("TERMINAL_TOGGLE", { open: false, source: "button" });
+    setIsTerminalOpen(false);
+  }, []);
+
   return (
     <ThemeProvider>
       <FileSystemProvider>
@@ -95,9 +105,9 @@ export default function WorkspaceLayout() {
           <div className="flex flex-col h-screen overflow-hidden text-black dark:text-white bg-white dark:bg-zinc-900">
             <div className="flex flex-1 min-h-0">
               <ActivityBar
-                onSearchClick={() => setSearchOpen(true)}
-                onGitClick={() => setActivePanel(p => p === "git" ? "explorer" : "git")}
-                onExplorerClick={() => setActivePanel("explorer")}
+                onSearchClick={handleSearchClick}
+                onGitClick={handleGitClick}
+                onExplorerClick={handleExplorerClick}
                 activePanel={activePanel}
               />
               {activePanel === "explorer" && <Explorer width={explorerWidth} />}
@@ -107,7 +117,7 @@ export default function WorkspaceLayout() {
                 </div>
               )}
               <div 
-                className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
+                className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 shrink-0"
                 onMouseDown={startResizing}
               />
               <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -117,11 +127,11 @@ export default function WorkspaceLayout() {
                 </div>
                 {/* Bottom panel: shared tabs header + panel body */}
                 {isTerminalOpen && (
-                  <div className="flex flex-col flex-shrink-0">
+                  <div className="flex flex-col shrink-0">
                     {/* Tab bar */}
                     <div className="flex items-center h-8 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 gap-1">
                       <button
-                        onClick={() => setBottomTab("terminal")}
+                        onClick={handleTerminalTabClick}
                         className={`px-3 h-full text-[11px] tracking-wide font-medium border-b-2 transition-colors ${
                           bottomTab === "terminal"
                             ? "border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100"
@@ -131,7 +141,7 @@ export default function WorkspaceLayout() {
                         Terminal
                       </button>
                       <button
-                        onClick={() => setBottomTab("problems")}
+                        onClick={handleProblemsTabClick}
                         className={`px-3 h-full text-[11px] tracking-wide font-medium border-b-2 transition-colors ${
                           bottomTab === "problems"
                             ? "border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100"
@@ -141,10 +151,7 @@ export default function WorkspaceLayout() {
                         Problems
                       </button>
                       <button
-                      onClick={() => {
-                        ideLog("TERMINAL_TOGGLE", { open: false, source: "button" });
-                        setIsTerminalOpen(false);
-                      }}
+                      onClick={handleCloseBottomPanel}
                         className="ml-auto text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs px-1"
                         title="Close panel"
                       >
@@ -166,4 +173,6 @@ export default function WorkspaceLayout() {
       </FileSystemProvider>
     </ThemeProvider>
   );
-}
+});
+
+export default WorkspaceLayout;

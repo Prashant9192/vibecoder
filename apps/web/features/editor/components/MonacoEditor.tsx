@@ -4,26 +4,44 @@ import Editor, { useMonaco, Monaco } from "@monaco-editor/react";
 import { useEditor } from "../context/EditorContext";
 import { useTheme } from "@/features/theme/context/ThemeContext";
 import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
-import { useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { ideLog } from "@/lib/ideLogger";
 
-export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}) {
+const MonacoEditor = memo(function MonacoEditor({ fileId }: { fileId?: string | null } = {}) {
     const { files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
     const targetFile = fileId ?? null;
     const { theme } = useTheme();
-    const { saveFile } = useFileSystemContext();
+    const { saveFileById, getNodeById } = useFileSystemContext();
     const monaco = useMonaco();
     const editorRef = useRef<any>(null);
 
-    const handleSave = () => {
-        if (!targetFile) return;
-        const currentContent = files[targetFile] || "";
-        saveFile(targetFile, currentContent);
-        setUnsavedFiles(unsavedFiles.filter(f => f !== targetFile));
-        ideLog("FILE_SAVE", { path: targetFile });
-    };
+    const fsNode = useMemo(() => (targetFile ? getNodeById(targetFile) : undefined), [getNodeById, targetFile]);
+    const activePath = fsNode?.type === "file" ? fsNode.path : null;
 
-    const handleMount = (editor: any, monaco: Monaco) => {
+    const getUri = useCallback((path: string) => {
+        // Create a stable URI per file path.
+        return monaco?.Uri.parse(`file://${path}`) ?? null;
+    }, [monaco]);
+
+    const ensureModel = useCallback((path: string, initialValue: string) => {
+        if (!monaco) return null;
+        const uri = monaco.Uri.parse(`file://${path}`);
+        let model = monaco.editor.getModel(uri);
+        if (!model) {
+            model = monaco.editor.createModel(initialValue, "typescript", uri);
+        }
+        return model;
+    }, [monaco]);
+
+    const handleSave = useCallback(() => {
+        if (!targetFile) return;
+        const currentContent = editorRef.current?.getValue?.() ?? files[targetFile] ?? "";
+        saveFileById(targetFile, currentContent);
+        setUnsavedFiles(unsavedFiles.filter((f) => f !== targetFile));
+        ideLog("FILE_SAVE", { fileId: targetFile });
+    }, [files, saveFileById, setUnsavedFiles, targetFile, unsavedFiles]);
+
+    const handleMount = useCallback((editor: any, monacoInstance: Monaco) => {
         editorRef.current = editor;
         
         // Listen to cursor position changes
@@ -43,14 +61,14 @@ export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}
             });
         }
         
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
         });
 
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
+        editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyF, () => {
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', shiftKey: true, ctrlKey: true }));
         });
-    };
+    }, [setCursorPosition]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,7 +80,27 @@ export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [targetFile, files, unsavedFiles]); // dependencies so handleSave gets fresh state
+    }, [handleSave]);
+
+    // Prevent Monaco re-initialization: keep one editor instance and swap models.
+    useEffect(() => {
+        if (!targetFile || !activePath || !monaco || !editorRef.current) return;
+
+        const initialValue = files[targetFile] ?? (fsNode?.type === "file" ? fsNode.content ?? "" : "");
+
+        // Ensure our editor state has an entry for this fileId.
+        if (files[targetFile] === undefined) {
+            setFiles({ ...files, [targetFile]: initialValue });
+        }
+
+        const model = ensureModel(activePath, initialValue);
+        if (!model) return;
+
+        const editor = editorRef.current;
+        if (editor.getModel?.() !== model) {
+            editor.setModel(model);
+        }
+    }, [activePath, ensureModel, files, fsNode, monaco, setFiles, targetFile]);
 
     useEffect(() => {
         if (lineToReveal !== null && editorRef.current) {
@@ -77,6 +115,7 @@ export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}
     }, [lineToReveal, setLineToReveal]);
 
     if (!targetFile) return null;
+    if (!fsNode || fsNode.type !== "file") return null;
 
     return (
         <div className="h-full w-full">
@@ -84,13 +123,13 @@ export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}
                 height="100%"
                 language="typescript"
                 theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                value={files[targetFile] || ""}
                 onMount={handleMount}
+                defaultValue=""
                 onChange={(value) => {
-                    setFiles({
-                        ...files,
-                        [targetFile]: value || ""
-                    });
+                    const nextValue = value || "";
+                    if (files[targetFile] !== nextValue) {
+                        setFiles({ ...files, [targetFile]: nextValue });
+                    }
                     if (!unsavedFiles.includes(targetFile)) {
                         setUnsavedFiles([...unsavedFiles, targetFile]);
                     }
@@ -105,4 +144,6 @@ export default function MonacoEditor({ fileId }: { fileId?: string | null } = {}
             />
         </div>
     );
-}
+});
+
+export default MonacoEditor;

@@ -1,17 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useReducer } from "react";
 import { ideLog } from "@/lib/ideLogger";
-
-export interface EditorGroup {
-    tabs: string[];
-    activeFile: string | null;
-}
-
-interface EditorGroupsState {
-    left: EditorGroup;
-    right: EditorGroup;
-}
+import { editorReducer, initialEditorLayoutState, EditorGroupsState } from "@/features/editor/state/editorReducer";
+import { ideEventBus } from "@/lib/ideEventBus";
 
 interface EditorContextType {
     editorGroups: EditorGroupsState;
@@ -39,70 +31,81 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: React.ReactNode }) {
-    const [editorGroups, setEditorGroups] = useState<EditorGroupsState>({
-        left: { tabs: [], activeFile: null },
-        right: { tabs: [], activeFile: null }
-    });
-    const [activeGroup, setActiveGroup] = useState<"left" | "right">("left");
-    const [isSplitView, setIsSplitView] = useState(false);
+    const [{ editorGroups, activeGroup, isSplitView }, dispatch] = useReducer(
+        editorReducer,
+        initialEditorLayoutState
+    );
 
+    // Editor buffers and unsaved flags are keyed by stable fileId (not path)
     const [files, setFiles] = useState<Record<string, string>>({});
     const [unsavedFiles, setUnsavedFiles] = useState<string[]>([]);
     const [recentFiles, setRecentFiles] = useState<string[]>([]);
     const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number, column: number } | null>(null);
     const [lineToReveal, setLineToReveal] = useState<number | null>(null);
 
-    const setActiveFile = useCallback((file: string | null, group?: "left" | "right") => {
-        const targetGroup = group || activeGroup;
-        setEditorGroups(prev => ({
-            ...prev,
-            [targetGroup]: {
-                ...prev[targetGroup],
-                activeFile: file
-            }
-        }));
-        // Only update recent files if we're actually setting a file
-        if (file) {
-            setRecentFiles(prev => {
-                const filtered = prev.filter(f => f !== file);
-                return [file, ...filtered].slice(0, 10);
+    const setActiveFile = useCallback(
+        (fileId: string | null, group?: "left" | "right") => {
+            const targetGroup = group || activeGroup;
+
+            dispatch({
+                type: "SET_ACTIVE_FILE",
+                payload: { fileId, group: targetGroup },
             });
-            ideLog("TAB_SWITCH", { path: file, group: targetGroup });
-        }
-    }, [activeGroup]);
+
+            if (fileId) {
+                setRecentFiles(prev => {
+                    const filtered = prev.filter(f => f !== fileId);
+                    return [fileId, ...filtered].slice(0, 10);
+                });
+                ideLog("TAB_SWITCH", { fileId, group: targetGroup });
+                ideEventBus.emit("TAB_SWITCH", { fileId, group: targetGroup });
+            }
+        },
+        [activeGroup]
+    );
 
     const setTabs = useCallback((tabs: string[], group: "left" | "right") => {
-        setEditorGroups(prev => ({
-            ...prev,
-            [group]: {
-                ...prev[group],
-                tabs
-            }
-        }));
+        dispatch({
+            type: "SET_TABS",
+            payload: { tabs, group },
+        });
     }, []);
 
-    const openFile = useCallback((fileId: string, group?: "left" | "right") => {
-        const targetGroup = group || activeGroup;
-        setEditorGroups(prev => {
-            const currentTabs = prev[targetGroup].tabs;
-            const newTabs = currentTabs.includes(fileId) ? currentTabs : [...currentTabs, fileId];
-            return {
-                ...prev,
-                [targetGroup]: {
-                    tabs: newTabs,
-                    activeFile: fileId
-                }
-            };
+    const setActiveGroup = useCallback((group: "left" | "right") => {
+        dispatch({
+            type: "SET_ACTIVE_GROUP",
+            payload: { group },
         });
-        
-        // Update recently opened
-        setRecentFiles(prev => {
-            const filtered = prev.filter(f => f !== fileId);
-            return [fileId, ...filtered].slice(0, 10);
-        });
+        ideEventBus.emit("EDITOR_FOCUS", { group });
+    }, []);
 
-        ideLog("FILE_OPEN", { path: fileId, group: targetGroup });
-    }, [activeGroup]);
+    const setIsSplitView = useCallback((split: boolean) => {
+        dispatch({
+            type: "SPLIT_EDITOR",
+            payload: { isSplitView: split },
+        });
+        ideEventBus.emit("EDITOR_SPLIT", { isSplitView: split });
+    }, []);
+
+    const openFile = useCallback(
+        (fileId: string, group?: "left" | "right") => {
+            const targetGroup = group || activeGroup;
+
+            dispatch({
+                type: "OPEN_FILE",
+                payload: { fileId, group: targetGroup },
+            });
+
+            setRecentFiles(prev => {
+                const filtered = prev.filter(f => f !== fileId);
+                return [fileId, ...filtered].slice(0, 10);
+            });
+
+            ideLog("FILE_OPEN", { fileId, group: targetGroup });
+            ideEventBus.emit("FILE_OPEN", { fileId, group: targetGroup });
+        },
+        [activeGroup]
+    );
 
     return (
         <EditorContext.Provider

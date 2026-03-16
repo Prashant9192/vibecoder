@@ -7,6 +7,7 @@ import { GitCommit, Plus, Check, FileDiff, FolderGit2 } from "lucide-react";
 import { ideLog } from "@/lib/ideLogger";
 
 type GitFileStatus = {
+  id: string;
   path: string;
   name: string;
   status: "M" | "U"; // M = Modified, U = Untracked
@@ -44,32 +45,34 @@ export function GitPanel() {
 
   const changedFiles: GitFileStatus[] = allFiles
     .filter((f) => {
-      const isUnsaved = unsavedFiles.includes(f.path);
+      const isUnsaved = unsavedFiles.includes(f.id);
       const isModified =
-        editorFiles[f.path] !== undefined && editorFiles[f.path] !== (f.content || "");
+        editorFiles[f.id] !== undefined && editorFiles[f.id] !== (f.content || "");
       return isUnsaved || isModified;
     })
     .map((f) => ({
+      id: f.id,
       path: f.path,
       name: f.name,
       status: "M" as const,
     }));
 
   // Files in editorFiles but NOT in the filesystem tree = untracked
-  const knownPaths = new Set(allFiles.map((f) => f.path));
+  const knownIds = new Set(allFiles.map((f) => f.id));
   const untrackedFiles: GitFileStatus[] = Object.keys(editorFiles)
-    .filter((p) => !knownPaths.has(p))
-    .map((p) => ({
-      path: p,
-      name: p.split("/").pop() || p,
+    .filter((id) => !knownIds.has(id))
+    .map((id) => ({
+      id,
+      path: id,
+      name: id,
       status: "U" as const,
     }));
 
   const allChanged = [...changedFiles, ...untrackedFiles].filter(
-    (f) => !staged.has(f.path)
+    (f) => !staged.has(f.id)
   );
   const stagedFiles: GitFileStatus[] = [...changedFiles, ...untrackedFiles].filter((f) =>
-    staged.has(f.path)
+    staged.has(f.id)
   );
 
   useEffect(() => {
@@ -81,26 +84,26 @@ export function GitPanel() {
     }
   }, [changedFiles.length, untrackedFiles.length]);
 
-  const stageFile = (path: string) => {
-    ideLog("GIT_STAGE", { path });
-    setStaged((prev) => new Set([...prev, path]));
+  const stageFile = (id: string) => {
+    ideLog("GIT_STAGE", { fileId: id });
+    setStaged((prev) => new Set([...prev, id]));
   };
 
-  const unstageFile = (path: string) => {
-    ideLog("GIT_UNSTAGE", { path });
+  const unstageFile = (id: string) => {
+    ideLog("GIT_UNSTAGE", { fileId: id });
     setStaged((prev) => {
       const next = new Set(prev);
-      next.delete(path);
+      next.delete(id);
       return next;
     });
   };
 
   const stageAll = () => {
-    const paths = allChanged.map((f) => f.path);
-    if (paths.length) {
-      ideLog("GIT_STAGE_ALL", { paths });
+    const ids = allChanged.map((f) => f.id);
+    if (ids.length) {
+      ideLog("GIT_STAGE_ALL", { fileIds: ids });
     }
-    setStaged(new Set(paths));
+    setStaged(new Set(ids));
   };
 
   const handleCommit = () => {
@@ -108,7 +111,7 @@ export function GitPanel() {
     const message = commitMessage.trim();
     ideLog("GIT_COMMIT", {
       message,
-      files: stagedFiles.map((f) => f.path),
+      fileIds: stagedFiles.map((f) => f.id),
     });
     setCommitted((prev) => [message, ...prev]);
     setStaged(new Set());
@@ -192,7 +195,7 @@ export function GitPanel() {
               <FileRow
                 key={file.path}
                 file={file}
-                action={() => unstageFile(file.path)}
+                action={() => unstageFile(file.id)}
                 actionIcon={<Check size={12} />}
                 actionTitle="Unstage"
               />
@@ -222,7 +225,7 @@ export function GitPanel() {
               <FileRow
                 key={file.path}
                 file={file}
-                action={() => stageFile(file.path)}
+                action={() => stageFile(file.id)}
                 actionIcon={<Plus size={12} />}
                 actionTitle="Stage"
               />

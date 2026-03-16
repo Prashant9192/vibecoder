@@ -4,9 +4,9 @@ import MonacoEditor from "@/features/editor/components/MonacoEditor";
 import EditorTabs from "@/features/editor/components/EditorTabs";
 import Breadcrumbs from "@/features/editor/components/Breadcrumbs";
 import { useEditor } from "@/features/editor/context/EditorContext";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect } from "react";
 
-export default function EditorArea() {
+const EditorArea = memo(function EditorArea() {
   const { isSplitView, editorGroups, setActiveGroup } = useEditor();
   const [splitWidth, setSplitWidth] = useState(50); // percentage
   const isDragging = useRef(false);
@@ -49,7 +49,7 @@ export default function EditorArea() {
       <div id="editor-split-container" className="flex flex-1 min-h-0 min-w-0 flex-row">
         
         {/* Left Group */}
-        <div style={{ width: isSplitView ? `${splitWidth}%` : '100%' }} className="relative h-full flex flex-col min-w-0 overflow-hidden" onClick={() => setActiveGroup("left")}>
+        <div style={{ width: isSplitView ? `${splitWidth}%` : "100%" }} className="relative h-full flex flex-col min-w-0 overflow-hidden" onClick={() => setActiveGroup("left")}>
           <EditorTabs group="left" />
           <Breadcrumbs group="left" />
           <div className="flex-1 w-full relative overflow-hidden">
@@ -59,7 +59,7 @@ export default function EditorArea() {
         
         {isSplitView && (
           <div 
-            className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 flex-shrink-0"
+            className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 shrink-0"
             onMouseDown={startResizing}
           />
         )}
@@ -77,4 +77,6 @@ export default function EditorArea() {
       </div>
     </div>
   );
-}
+});
+
+export default EditorArea;

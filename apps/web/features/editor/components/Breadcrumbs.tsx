@@ -2,6 +2,7 @@
 
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { ChevronRight } from "lucide-react";
+import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 
 const getFileIcon = (segment: string) => {
   if (segment.endsWith('.ts') || segment.endsWith('.tsx')) return "text-[#3178C6]";
@@ -13,31 +14,34 @@ const getFileIcon = (segment: string) => {
 
 export default function Breadcrumbs({ group }: { group: "left" | "right" }) {
   const { editorGroups, openFile } = useEditor();
-  const activeFile = editorGroups[group].activeFile;
+  const { getNodeById } = useFileSystemContext();
+  const activeFileId = editorGroups[group].activeFile;
+  const activeNode = activeFileId ? getNodeById(activeFileId) : undefined;
+  const activePath = activeNode?.path ?? null;
 
-  if (!activeFile) {
+  if (!activeFileId || !activePath) {
     return (
-      <div className="flex items-center h-7 px-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex-shrink-0" />
+      <div className="flex items-center h-7 px-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shrink-0" />
     );
   }
 
   // Split path into segments, removing leading slash and empty parts
-  const segments = activeFile.replace(/^\//, "").split("/");
+  const segments = activePath.replace(/^\//, "").split("/");
 
   const handleSegmentClick = (index: number) => {
     // Build partial path up to index — for folders we can't open, just last file
     // For now, clicking a folder segment just focuses the current file
     if (index === segments.length - 1) {
-      openFile(activeFile, group);
+      openFile(activeFileId, group);
     }
   };
 
   return (
-    <div className="flex items-center h-7 px-3 gap-0.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex-shrink-0 overflow-x-auto hide-scrollbar">
+    <div className="flex items-center h-7 px-3 gap-0.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shrink-0 overflow-x-auto hide-scrollbar">
       {segments.map((segment, index) => {
         const isLast = index === segments.length - 1;
         return (
-          <div key={`${segment}-${index}`} className="flex items-center gap-0.5 flex-shrink-0">
+          <div key={`${segment}-${index}`} className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={() => handleSegmentClick(index)}
               className={`
@@ -53,7 +57,7 @@ export default function Breadcrumbs({ group }: { group: "left" | "right" }) {
             {!isLast && (
               <ChevronRight
                 size={12}
-                className="text-zinc-400 dark:text-zinc-600 flex-shrink-0"
+                className="text-zinc-400 dark:text-zinc-600 shrink-0"
                 strokeWidth={2}
               />
             )}

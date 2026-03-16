@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useTheme } from "@/features/theme/context/ThemeContext";
 import "xterm/css/xterm.css";
 import { ideLog } from "@/lib/ideLogger";
+import { ideEventBus } from "@/lib/ideEventBus";
 
 interface TerminalPanelProps {
   onClose: () => void;
@@ -47,6 +48,7 @@ export function TerminalPanel({ onClose }: TerminalPanelProps) {
       fitAddonInstance.current = fitAddon;
 
       ideLog("TERMINAL_OPEN", undefined);
+      ideEventBus.emit("TERMINAL_OPEN", undefined);
 
       term.writeln("\x1b[1;36mVibeCoder Terminal Ready\x1b[0m");
       term.write("$ ");

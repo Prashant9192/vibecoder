@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { ideLog } from "@/lib/ideLogger";
+import { ideEventBus } from "@/lib/ideEventBus";
 
 export type FileNode = {
+    id: string;
     name: string;
     path: string;
     type: "file" | "folder";
@@ -13,24 +15,62 @@ export type FileNode = {
 
 interface FileSystemContextType {
     files: FileNode[];
+    getNodeById: (id: string) => FileNode | undefined;
+    getNodeByPath: (path: string) => FileNode | undefined;
     addFile: (fileName: string, parentPath?: string) => void;
     createFolder: (folderName: string, parentPath?: string) => void;
     renameFile: (path: string, newName: string) => void;
+    renameFileById: (id: string, newName: string) => void;
     deleteFile: (path: string) => void;
+    deleteFileById: (id: string) => void;
     moveFile: (sourcePath: string, targetParentPath: string) => void;
+    moveFileById: (id: string, targetParentPath: string) => void;
     saveFile: (path: string, content: string) => void;
+    saveFileById: (id: string, content: string) => void;
 }
 
 const FileSystemContext = createContext<FileSystemContextType | undefined>(undefined);
 
+const createId = () => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (crypto as any).randomUUID() as string;
+    }
+    return `id_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const findNodeByPath = (nodes: FileNode[], path: string): FileNode | undefined => {
+    for (const node of nodes) {
+        if (node.path === path) return node;
+        if (node.type === "folder" && node.children) {
+            const found = findNodeByPath(node.children, path);
+            if (found) return found;
+        }
+    }
+    return undefined;
+};
+
+const findNodeById = (nodes: FileNode[], id: string): FileNode | undefined => {
+    for (const node of nodes) {
+        if (node.id === id) return node;
+        if (node.type === "folder" && node.children) {
+            const found = findNodeById(node.children, id);
+            if (found) return found;
+        }
+    }
+    return undefined;
+};
+
 export function FileSystemProvider({ children }: { children: React.ReactNode }) {
     const [files, setFiles] = useState<FileNode[]>([
         {
+            id: "folder_src",
             name: "src",
             path: "/src",
             type: "folder",
             children: [
                 {
+                    id: "file_main_ts",
                     name: "main.ts",
                     path: "/src/main.ts",
                     type: "file",
@@ -41,6 +81,7 @@ export function FileSystemProvider({ children }: { children: React.ReactNode }) 
 console.log(greet("VibeCoder"));`,
                 },
                 {
+                    id: "file_utils_ts",
                     name: "utils.ts",
                     path: "/src/utils.ts",
                     type: "file",
@@ -51,6 +92,9 @@ console.log(greet("VibeCoder"));`,
             ],
         },
     ]);
+
+    const getNodeById = (id: string) => findNodeById(files, id);
+    const getNodeByPath = (path: string) => findNodeByPath(files, path);
 
     const updateNodeInTree = (nodes: FileNode[], targetPath: string, updateFn: (folder: FileNode) => FileNode): FileNode[] => {
         return nodes.map(node => {
@@ -81,10 +125,12 @@ console.log(greet("VibeCoder"));`,
         setFiles(prevFiles => updateNodeInTree(prevFiles, parentPath, folder => {
             if (folder.children?.some(f => f.name === fileName)) return folder;
             const newPath = `${folder.path}/${fileName}`;
+            const id = createId();
             ideLog("FILE_CREATE", { path: newPath, parentPath });
+            ideEventBus.emit("FILE_CREATE", { id, path: newPath, parentPath, type: "file" });
             return {
                 ...folder,
-                children: [...(folder.children || []), { name: fileName, path: newPath, type: "file", content: "" }]
+                children: [...(folder.children || []), { id, name: fileName, path: newPath, type: "file", content: "" }]
             };
         }));
     };
@@ -93,15 +139,18 @@ console.log(greet("VibeCoder"));`,
         setFiles(prevFiles => updateNodeInTree(prevFiles, parentPath, folder => {
             if (folder.children?.some(f => f.name === newFolderName)) return folder;
             const newPath = `${folder.path}/${newFolderName}`;
+            const id = createId();
             ideLog("FOLDER_CREATE", { path: newPath, parentPath });
+            ideEventBus.emit("FILE_CREATE", { id, path: newPath, parentPath, type: "folder" });
             return {
                 ...folder,
-                children: [...(folder.children || []), { name: newFolderName, path: newPath, type: "folder", children: [] }]
+                children: [...(folder.children || []), { id, name: newFolderName, path: newPath, type: "folder", children: [] }]
             };
         }));
     };
 
     const renameFile = (path: string, newName: string) => {
+        const nodeToRename = findNodeByPath(files, path);
         setFiles(prevFiles => {
             const renameInTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {
@@ -109,6 +158,9 @@ console.log(greet("VibeCoder"));`,
                         const parentPath = path.substring(0, path.lastIndexOf('/'));
                         const newPath = `${parentPath}/${newName}`;
                         ideLog("FILE_RENAME", { oldPath: path, newPath });
+                        if (nodeToRename) {
+                            ideEventBus.emit("FILE_RENAME", { id: nodeToRename.id, oldPath: path, newPath });
+                        }
                         if (node.type === "folder" && node.children) {
                             // Recursively rebase all children to the new parent path
                             const rebasedChildren = node.children.map(child =>
@@ -128,8 +180,18 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
+    const renameFileById = (id: string, newName: string) => {
+        const node = findNodeById(files, id);
+        if (!node) return;
+        renameFile(node.path, newName);
+    };
+
     const deleteFile = (path: string) => {
+        const nodeToDelete = findNodeByPath(files, path);
         ideLog("FILE_DELETE", { path });
+        if (nodeToDelete) {
+            ideEventBus.emit("FILE_DELETE", { id: nodeToDelete.id, path });
+        }
         setFiles(prevFiles => {
             const deleteFromTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.filter(node => node.path !== path).map(node => {
@@ -141,6 +203,12 @@ console.log(greet("VibeCoder"));`,
             };
             return deleteFromTree(prevFiles);
         });
+    };
+
+    const deleteFileById = (id: string) => {
+        const node = findNodeById(files, id);
+        if (!node) return;
+        deleteFile(node.path);
     };
 
     const moveFile = (sourcePath: string, targetParentPath: string) => {
@@ -191,6 +259,7 @@ console.log(greet("VibeCoder"));`,
             }
 
             ideLog("FILE_MOVE", { oldPath: sourcePath, newPath, targetParentPath });
+            ideEventBus.emit("FILE_MOVE", { id: fileToMove.id, oldPath: sourcePath, newPath, targetParentPath });
 
             const addFileToTree = (nodes: FileNode[]): FileNode[] => {
                 return nodes.map(node => {
@@ -216,6 +285,12 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
+    const moveFileById = (id: string, targetParentPath: string) => {
+        const node = findNodeById(files, id);
+        if (!node) return;
+        moveFile(node.path, targetParentPath);
+    };
+
     const saveFile = (path: string, content: string) => {
         ideLog("FILE_SAVE", { path });
         setFiles(prevFiles => {
@@ -234,16 +309,28 @@ console.log(greet("VibeCoder"));`,
         });
     };
 
+    const saveFileById = (id: string, content: string) => {
+        const node = findNodeById(files, id);
+        if (!node) return;
+        saveFile(node.path, content);
+    };
+
     return (
         <FileSystemContext.Provider
             value={{
                 files,
+                getNodeById,
+                getNodeByPath,
                 addFile,
                 createFolder,
                 renameFile,
+                renameFileById,
                 deleteFile,
+                deleteFileById,
                 moveFile,
+                moveFileById,
                 saveFile,
+                saveFileById,
             }}
         >
             {children}

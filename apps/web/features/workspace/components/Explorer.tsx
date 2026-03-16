@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFileSystemContext, FileNode } from "@/features/filesystem/context/FileSystemContext";
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { FilePlus, FolderPlus, FolderInput, Pencil, Trash, ChevronRight, ChevronDown, Folder, FolderOpen, FileCode, FileJson, FileText, File } from "lucide-react";
@@ -22,14 +22,22 @@ const getFileIcon = (name: string) => {
   return <File size={14} className="flex-shrink-0 text-zinc-500 dark:text-zinc-400" />;
 };
 
-export default function Explorer({ width = 256 }: { width?: number }) {
-  const { files: fileSystemFiles, addFile, createFolder, renameFile, deleteFile, moveFile } = useFileSystemContext();
+const Explorer = memo(function Explorer({ width = 256 }: { width?: number }) {
+  const {
+    files: fileSystemFiles,
+    addFile,
+    createFolder,
+    renameFileById,
+    deleteFileById,
+    moveFileById,
+    getNodeById,
+    getNodeByPath,
+  } = useFileSystemContext();
   const { editorGroups, activeGroup, openFile, files, setFiles, setIsSplitView, setTabs, setActiveFile } = useEditor();
   const activeFile = editorGroups?.[activeGroup]?.activeFile ?? null;
-  const openFiles = editorGroups?.[activeGroup]?.tabs ?? [];
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [creatingNode, setCreatingNode] = useState<{ parentPath: string, type: "file" | "folder" } | null>(null);
-  const [renamingNode, setRenamingNode] = useState<{ path: string, initialName: string } | null>(null);
+  const [renamingNode, setRenamingNode] = useState<{ id: string, initialName: string } | null>(null);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
@@ -50,56 +58,63 @@ export default function Explorer({ width = 256 }: { width?: number }) {
         }
       }, 0);
     }
-  }, [creatingNode, renamingNode]);
+  }, [creatingNode, renamingNode, inputValue]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // F2 Rename Shortcut
       if (e.key === 'F2' && activeFile && !renamingNode) {
         e.preventDefault();
-        const initialName = activeFile.split('/').pop();
-        if (initialName) {
-          setRenamingNode({ path: activeFile, initialName });
-          setInputValue(initialName);
+        const node = getNodeById(activeFile);
+        if (node?.name) {
+          setRenamingNode({ id: activeFile, initialName: node.name });
+          setInputValue(node.name);
         }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [activeFile, renamingNode, fileSystemFiles]);
+  }, [activeFile, renamingNode, getNodeById]);
 
-  const handleOpenFile = (file: any, group?: "left" | "right") => {
-    if (!files[file.path]) {
+  const handleOpenFile = useCallback((file: FileNode, group?: "left" | "right") => {
+    const fileId = file.id as string | undefined;
+    if (!fileId) return;
+
+    if (!files[fileId]) {
       setFiles({
         ...files,
-        [file.path]: file.content || ""
+        [fileId]: file.content || ""
       });
     }
 
-    openFile(file.path, group);
-  };
+    openFile(fileId, group);
+  }, [files, openFile, setFiles]);
 
-  const startCreating = (e: React.MouseEvent, type: "file" | "folder", parentPath: string = "/src") => {
+  const startCreating = useCallback((e: React.MouseEvent, type: "file" | "folder", parentPath: string = "/src") => {
     e.stopPropagation();
     setCreatingNode({ type, parentPath });
     setInputValue("");
     setExpanded(prev => ({ ...prev, [parentPath]: true }));
-  };
+  }, []);
 
-  const commitCreating = () => {
+  const commitCreating = useCallback(() => {
     if (creatingNode && inputValue.trim()) {
       const name = inputValue.trim();
       if (creatingNode.type === "file") {
         addFile(name, creatingNode.parentPath);
-        handleOpenFile({ name, path: `${creatingNode.parentPath}/${name}`, type: "file", content: "" });
+        const createdPath = `${creatingNode.parentPath}/${name}`;
+        const created = getNodeByPath(createdPath);
+        if (created?.type === "file") {
+          handleOpenFile(created);
+        }
       } else {
         createFolder(name, creatingNode.parentPath);
       }
     }
     setCreatingNode(null);
     setInputValue("");
-  };
+  }, [addFile, createFolder, creatingNode, getNodeByPath, handleOpenFile, inputValue]);
 
   const handleCreatingKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") commitCreating();
@@ -109,36 +124,23 @@ export default function Explorer({ width = 256 }: { width?: number }) {
     }
   };
 
-  const startRenaming = (e: React.MouseEvent | KeyboardEvent, nodePath: string, initialName: string) => {
+  const startRenaming = useCallback((e: React.MouseEvent | KeyboardEvent, nodeId: string, initialName: string) => {
     if (e.stopPropagation) e.stopPropagation();
-    setRenamingNode({ path: nodePath, initialName });
+    setRenamingNode({ id: nodeId, initialName });
     setInputValue(initialName);
-  };
+  }, []);
 
-  const commitRenaming = (nodePath: string, oldName: string) => {
+  const commitRenaming = useCallback((nodeId: string, oldName: string) => {
     if (renamingNode && inputValue.trim() && inputValue.trim() !== oldName) {
       const trimName = inputValue.trim();
-      
-      const parentPath = nodePath.substring(0, nodePath.lastIndexOf('/'));
-      const newPath = `${parentPath}/${trimName}`;
-      
-      renameFile(nodePath, trimName);
-
-      // If file was renamed, we just let the context reset active tabs gracefully and the user can reopen, or handle it via a robust path manager out-of-scope.
-      // We removed the simplistic tab replacement here for the group structure, which prefers stable unique IDs.
-      if (files[nodePath] !== undefined) {
-        const updated = { ...files };
-        updated[newPath] = updated[nodePath];
-        delete updated[nodePath];
-        setFiles(updated);
-      }
+      renameFileById(nodeId, trimName);
     }
     setRenamingNode(null);
     setInputValue("");
-  };
+  }, [inputValue, renameFileById, renamingNode]);
 
   const handleRenamingKeyDown = (e: React.KeyboardEvent, node: FileNode) => {
-    if (e.key === "Enter") commitRenaming(node.path, node.name);
+    if (e.key === "Enter") commitRenaming(node.id, node.name);
     if (e.key === "Escape") {
       setRenamingNode(null);
       setInputValue("");
@@ -162,50 +164,51 @@ export default function Explorer({ width = 256 }: { width?: number }) {
     );
   };
 
-  const handleDelete = (e: React.MouseEvent, nodePath: string, fileName: string) => {
+  const handleDelete = useCallback((e: React.MouseEvent, nodeId: string, fileName: string) => {
     e.stopPropagation();
     const confirmDelete = window.confirm(`Are you sure you want to delete ${fileName}?`);
 
     if (confirmDelete) {
-      deleteFile(nodePath);
+      deleteFileById(nodeId);
 
       // Clean up tabs in BOTH editor groups
       (["left", "right"] as const).forEach((grp) => {
         const grpData = editorGroups[grp];
         if (!grpData) return;
-        const newTabs = grpData.tabs.filter((t) => t !== nodePath);
+        const newTabs = grpData.tabs.filter((t) => t !== nodeId);
         if (newTabs.length !== grpData.tabs.length) {
           setTabs(newTabs, grp);
-          if (grpData.activeFile === nodePath) {
+          if (grpData.activeFile === nodeId) {
             setActiveFile(newTabs.length > 0 ? newTabs[newTabs.length - 1] : null, grp);
           }
         }
       });
 
-      if (files[nodePath] !== undefined) {
+      if (files[nodeId] !== undefined) {
         const updated = { ...files };
-        delete updated[nodePath];
+        delete updated[nodeId];
         setFiles(updated);
       }
     }
-  };
+  }, [editorGroups, files, setActiveFile, setTabs, setFiles, deleteFileById]);
 
-  const handleMove = (e: React.MouseEvent, oldNodePath: string, fileName: string) => {
+  const handleMove = useCallback((e: React.MouseEvent, nodeId: string, fileName: string) => {
     e.stopPropagation();
     
     // Quick UI hack for now to select path instead of complicated folder traversing
     const newParentPath = prompt(`Move ${fileName} to folder path (e.g. /src/components):`, "/src");
     
     if (newParentPath && newParentPath.trim()) {
-      moveFile(oldNodePath, newParentPath.trim());
-      setExpanded(prev => ({ ...prev, [newParentPath.trim()]: true }));
+      const targetParent = newParentPath.trim();
+      moveFileById(nodeId, targetParent);
+      setExpanded(prev => ({ ...prev, [targetParent]: true }));
     }
-  };
+  }, [moveFileById]);
 
-  const handleDragStart = (e: React.DragEvent, nodePath: string) => {
-    e.dataTransfer.setData("application/vnd.vibecoder.file", nodePath);
+  const handleDragStart = useCallback((e: React.DragEvent, nodeId: string) => {
+    e.dataTransfer.setData("application/vnd.vibecoder.file", nodeId);
     e.dataTransfer.effectAllowed = "move";
-  };
+  }, []);
 
   const handleDragOver = (e: React.DragEvent, nodePath: string) => {
     e.preventDefault();
@@ -220,37 +223,39 @@ export default function Explorer({ width = 256 }: { width?: number }) {
     setDragOverPath(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetFolderPath: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetFolderPath: string) => {
     e.preventDefault();
     setDragOverPath(null);
 
-    const sourcePath = e.dataTransfer.getData("application/vnd.vibecoder.file");
-    if (!sourcePath || sourcePath === targetFolderPath) return;
+    const sourceId = e.dataTransfer.getData("application/vnd.vibecoder.file");
+    if (!sourceId) return;
+    const sourceNode = getNodeById(sourceId);
+    if (!sourceNode) return;
 
     // Prevent folder from dropping into its own child
-    if (targetFolderPath.startsWith(sourcePath + "/")) return;
+    if (sourceNode.type === "folder" && targetFolderPath.startsWith(sourceNode.path + "/")) return;
 
     // Prevent drop if it's already in this folder
-    const sourceParent = sourcePath.substring(0, sourcePath.lastIndexOf("/"));
+    const sourceParent = sourceNode.path.substring(0, sourceNode.path.lastIndexOf("/"));
     if (sourceParent === targetFolderPath) return;
 
-    moveFile(sourcePath, targetFolderPath);
+    moveFileById(sourceId, targetFolderPath);
     setExpanded((prev) => ({ ...prev, [targetFolderPath]: true }));
-  };
+  }, [getNodeById, moveFileById]);
 
-  const toggleFolder = (folderName: string) => {
+  const toggleFolder = useCallback((folderName: string) => {
     setExpanded((prev) => ({
       ...prev,
       [folderName]: prev[folderName] === undefined ? false : !prev[folderName]
     }));
-  };
+  }, []);
 
-  const renderNode = (node: FileNode, depth: number = 0) => {
+  const renderNode = useCallback((node: FileNode, depth: number = 0) => {
     const padStyle = { paddingLeft: `${depth * 16 + 8}px`, paddingRight: '8px' };
 
-    if (renamingNode && renamingNode.path === node.path) {
+    if (renamingNode && renamingNode.id === node.id) {
       return (
-        <div key={node.path} style={padStyle} className={`flex items-center gap-1.5 py-1 text-[13px] bg-zinc-200 dark:bg-zinc-800 border border-[#007FD4] dark:border-[#007FD4] rounded-sm min-w-0 h-7`}>
+        <div key={node.id} style={padStyle} className={`flex items-center gap-1.5 py-1 text-[13px] bg-zinc-200 dark:bg-zinc-800 border border-[#007FD4] dark:border-[#007FD4] rounded-sm min-w-0 h-7`}>
           {node.type === 'file' ? getFileIcon(node.name) : (
             <>
               <ChevronRight size={14} className="text-zinc-500 dark:text-zinc-400 flex-shrink-0 opacity-0" />
@@ -271,14 +276,14 @@ export default function Explorer({ width = 256 }: { width?: number }) {
 
     if (node.type === "file") {
       return (
-        <ContextMenu key={node.path}>
+        <ContextMenu key={node.id}>
           <ContextMenuTrigger>
             <li
               draggable
-              onDragStart={(e) => handleDragStart(e, node.path)}
+              onDragStart={(e) => handleDragStart(e, node.id)}
               style={padStyle}
               className={`group flex items-center justify-between py-1 cursor-pointer transition-colors text-[13px] select-none ${
-                activeFile === node.path
+                activeFile === node.id
                   ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
                   : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
@@ -291,21 +296,21 @@ export default function Explorer({ width = 256 }: { width?: number }) {
 
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
-                  onClick={(e) => handleMove(e, node.path, node.name)}
+                  onClick={(e) => handleMove(e, node.id, node.name)}
                   className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
                   title="Move"
                 >
                   <FolderInput size={14} />
                 </button>
                 <button
-                  onClick={(e) => startRenaming(e, node.path, node.name)}
+                  onClick={(e) => startRenaming(e, node.id, node.name)}
                   className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
                   title="Rename"
                 >
                   <Pencil size={14} />
                 </button>
                 <button
-                  onClick={(e) => handleDelete(e, node.path, node.name)}
+                  onClick={(e) => handleDelete(e, node.id, node.name)}
                   className="text-zinc-500 dark:text-zinc-400 hover:text-[#FF0000] transition-colors p-[2px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-300"
                   title="Delete"
                 >
@@ -321,17 +326,17 @@ export default function Explorer({ width = 256 }: { width?: number }) {
                 e.stopPropagation(); 
                 handleOpenFile(node, "right"); 
                 setIsSplitView(true); 
-                ideLog("EDITOR_SPLIT", { primary: "left", secondary: "right", path: node.path });
+                ideLog("EDITOR_SPLIT", { primary: "left", secondary: "right", fileId: node.id });
               }}
             >
               Open to Side
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={(e) => { e.stopPropagation(); startRenaming(e, node.path, node.name); }}>Rename</ContextMenuItem>
-            <ContextMenuItem onClick={(e) => handleMove(e, node.path, node.name)}>Move</ContextMenuItem>
+            <ContextMenuItem onClick={(e) => { e.stopPropagation(); startRenaming(e, node.id, node.name); }}>Rename</ContextMenuItem>
+            <ContextMenuItem onClick={(e) => handleMove(e, node.id, node.name)}>Move</ContextMenuItem>
             <ContextMenuItem onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(node.path); }}>Copy Path</ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={(e) => handleDelete(e, node.path, node.name)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/30">Delete</ContextMenuItem>
+            <ContextMenuItem onClick={(e) => handleDelete(e, node.id, node.name)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/30">Delete</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
       );
@@ -339,12 +344,12 @@ export default function Explorer({ width = 256 }: { width?: number }) {
       const isExpanded = expanded[node.path] ?? true;
 
       return (
-        <ContextMenu key={node.path}>
+        <ContextMenu key={node.id}>
           <div className="mb-[2px]">
             <ContextMenuTrigger>
               <div
                 draggable
-                onDragStart={(e) => handleDragStart(e, node.path)}
+                onDragStart={(e) => handleDragStart(e, node.id)}
                 onDragOver={(e) => handleDragOver(e, node.path)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, node.path)}
@@ -386,9 +391,9 @@ export default function Explorer({ width = 256 }: { width?: number }) {
               <ContextMenuItem onClick={(e) => startCreating(e, "file", node.path)}>New File</ContextMenuItem>
               <ContextMenuItem onClick={(e) => startCreating(e, "folder", node.path)}>New Folder</ContextMenuItem>
               <ContextMenuSeparator />
-              <ContextMenuItem onClick={(e) => startRenaming(e, node.path, node.name)}>Rename</ContextMenuItem>
+              <ContextMenuItem onClick={(e) => startRenaming(e, node.id, node.name)}>Rename</ContextMenuItem>
               <ContextMenuSeparator />
-              <ContextMenuItem onClick={(e) => handleDelete(e, node.path, node.name)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/30">Delete</ContextMenuItem>
+              <ContextMenuItem onClick={(e) => handleDelete(e, node.id, node.name)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/30">Delete</ContextMenuItem>
             </ContextMenuContent>
 
             {isExpanded && node.children && (
@@ -401,7 +406,9 @@ export default function Explorer({ width = 256 }: { width?: number }) {
         </ContextMenu>
       );
     }
-  };
+  }, [commitRenaming, creatingNode, dragOverPath, expanded, handleDelete, handleDragLeave, handleDragOver, handleDragStart, handleDrop, handleMove, handleOpenFile, handleRenamingKeyDown, inputValue, renamingNode, startCreating, startRenaming, toggleFolder]);
+
+  const renderedTree = useMemo(() => fileSystemFiles.map((node) => renderNode(node)), [fileSystemFiles, renderNode]);
 
   return (
     <div 
@@ -429,8 +436,10 @@ export default function Explorer({ width = 256 }: { width?: number }) {
       </div>
 
       <div className="flex flex-col">
-        {fileSystemFiles.map((node) => renderNode(node))}
+        {renderedTree}
       </div>
     </div>
   );
-}
+});
+
+export default Explorer;

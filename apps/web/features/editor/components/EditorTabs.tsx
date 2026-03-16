@@ -2,11 +2,13 @@
 
 import { useEditor } from "@/features/editor/context/EditorContext";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { ideLog } from "@/lib/ideLogger";
+import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 
-export default function EditorTabs({ group }: { group: "left" | "right" }) {
+const EditorTabs = memo(function EditorTabs({ group }: { group: "left" | "right" }) {
   const { editorGroups, setActiveFile, setTabs, unsavedFiles, activeGroup, setActiveGroup } = useEditor();
+  const { getNodeById } = useFileSystemContext();
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
 
   // Guard against undefined during SSR/hydration window
@@ -15,10 +17,10 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
   const activeFile = groupData.activeFile;
   const isActiveGroup = activeGroup === group;
 
-  const handleClose = (e: React.MouseEvent, fileName: string) => {
+  const handleClose = useCallback((e: React.MouseEvent, fileName: string) => {
     e.stopPropagation();
 
-    ideLog("TAB_CLOSE", { path: fileName, group });
+    ideLog("TAB_CLOSE", { fileId: fileName, group });
 
     const newTabs = tabs.filter((file) => file !== fileName);
     setTabs(newTabs, group);
@@ -32,7 +34,7 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
         setActiveFile(null, group);
       }
     }
-  };
+  }, [activeFile, group, setActiveFile, setTabs, tabs]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -42,7 +44,7 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
         e.preventDefault();
         if (activeFile) {
-          ideLog("TAB_CLOSE", { path: activeFile, group, source: "shortcut" });
+          ideLog("TAB_CLOSE", { fileId: activeFile, group, source: "shortcut" });
           const newTabs = tabs.filter((file) => file !== activeFile);
           setTabs(newTabs, group);
 
@@ -61,17 +63,17 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeFile, tabs, group, isActiveGroup, setTabs, setActiveFile]);
 
-  const handleDragStart = (e: React.DragEvent, file: string) => {
+  const handleDragStart = useCallback((e: React.DragEvent, file: string) => {
     setDraggedTab(file);
     e.dataTransfer.effectAllowed = "move";
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent, targetFile: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetFile: string) => {
     e.preventDefault();
     if (draggedTab && draggedTab !== targetFile) {
       const newFiles = [...tabs];
@@ -84,7 +86,7 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
       setTabs(newFiles, group);
     }
     setDraggedTab(null);
-  };
+  }, [draggedTab, group, setTabs, tabs]);
 
   return (
     <div 
@@ -110,12 +112,12 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
               : "bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
             }`}
         >
-          <span>{file.split('/').pop()}</span>
+          <span>{getNodeById(file)?.name ?? file}</span>
           <span
             className={`flex items-center justify-center p-0.5 rounded transition-all w-5 h-5 
               ${unsavedFiles.includes(file) 
                 ? "text-zinc-900 dark:text-zinc-100 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700" 
-                : "text-transparent group-hover:text-zinc-500 dark:group-hover:text-zinc-400 hover:!text-zinc-900 dark:hover:!text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                : "text-transparent group-hover:text-zinc-500 dark:group-hover:text-zinc-400 hover:text-zinc-900! dark:hover:text-zinc-100! hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
             onClick={(e) => handleClose(e, file)}
           >
             {unsavedFiles.includes(file) ? (
@@ -131,4 +133,6 @@ export default function EditorTabs({ group }: { group: "left" | "right" }) {
       ))}
     </div>
   );
-}
+});
+
+export default EditorTabs;
