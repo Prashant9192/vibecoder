@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { storage } from "@/lib/storage";
 
 interface ThemeContextType {
   theme: "light" | "dark";
@@ -11,16 +12,16 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<"light" | "dark">("dark"); // Default dark
+  const [theme, setThemeState] = useState<"light" | "dark">(() => storage.get("theme", "dark"));
 
   useEffect(() => {
-    // Optionally check deep system preference on mount here, but defaulting to dark is fine.
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
+    storage.set("theme", theme);
   }, [theme]);
 
   const setTheme = (newTheme: "light" | "dark") => {
