@@ -7,34 +7,25 @@ import { ideLog } from "@/lib/ideLogger";
 import { useFileSystemContext } from "@/features/filesystem/context/FileSystemContext";
 
 const EditorTabs = memo(function EditorTabs({ group }: { group: "left" | "right" }) {
-  const { editorGroups, setActiveFile, setTabs, unsavedFiles, activeGroup, setActiveGroup } = useEditor();
+  const { editorGroups, activeGroup, setActiveGroup, closeTab, unsavedFiles, setTabs, setActiveFile } = useEditor();
   const { getNodeById } = useFileSystemContext();
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Guard against undefined during SSR/hydration window
   const groupData = editorGroups?.[group] ?? { tabs: [], activeFile: null };
-  const tabs = groupData.tabs;
+  const tabs = groupData.tabs || [];
   const activeFile = groupData.activeFile;
   const isActiveGroup = activeGroup === group;
 
   const handleClose = useCallback((e: React.MouseEvent, fileName: string) => {
     e.stopPropagation();
-
-    ideLog("TAB_CLOSE", { fileId: fileName, group });
-
-    const newTabs = tabs.filter((file) => file !== fileName);
-    setTabs(newTabs, group);
-
-    if (activeFile === fileName) {
-      if (newTabs.length > 0) {
-        const closedIndex = tabs.indexOf(fileName);
-        const newActiveIndex = closedIndex > 0 ? closedIndex - 1 : 0;
-        setActiveFile(newTabs[newActiveIndex], group);
-      } else {
-        setActiveFile(null, group);
-      }
-    }
-  }, [activeFile, group, setActiveFile, setTabs, tabs]);
+    closeTab(fileName, group);
+  }, [closeTab, group]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,17 +35,7 @@ const EditorTabs = memo(function EditorTabs({ group }: { group: "left" | "right"
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
         e.preventDefault();
         if (activeFile) {
-          ideLog("TAB_CLOSE", { fileId: activeFile, group, source: "shortcut" });
-          const newTabs = tabs.filter((file) => file !== activeFile);
-          setTabs(newTabs, group);
-
-          if (newTabs.length > 0) {
-            const closedIndex = tabs.indexOf(activeFile);
-            const newActiveIndex = closedIndex > 0 ? closedIndex - 1 : 0;
-            setActiveFile(newTabs[newActiveIndex], group);
-          } else {
-            setActiveFile(null, group);
-          }
+          closeTab(activeFile, group);
         }
       }
     };
@@ -87,6 +68,8 @@ const EditorTabs = memo(function EditorTabs({ group }: { group: "left" | "right"
     }
     setDraggedTab(null);
   }, [draggedTab, group, setTabs, tabs]);
+
+  if (!mounted) return <div className="h-[38px] w-full bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800" />;
 
   return (
     <div 

@@ -174,7 +174,7 @@ export function TerminalPanel({ onClose }: TerminalPanelProps) {
   }, []);
 
   return (
-    <div className="h-full bg-background flex flex-col overflow-hidden border-t">
+    <div className="h-full bg-background flex flex-col overflow-hidden">
       <div className="flex-1 w-full pl-4 pt-2 overflow-hidden" ref={terminalRef} style={{ width: "100%", height: "100%" }} />
     </div>
   );

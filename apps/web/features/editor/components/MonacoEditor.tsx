@@ -8,7 +8,7 @@ import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { ideLog } from "@/lib/ideLogger";
 
 const MonacoEditor = memo(function MonacoEditor({ fileId }: { fileId?: string | null } = {}) {
-    const { files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal } = useEditor();
+    const { files, setFiles, unsavedFiles, setUnsavedFiles, setCursorPosition, lineToReveal, setLineToReveal, mounted } = useEditor();
     const targetFile = fileId ?? null;
     const { theme } = useTheme();
     const { saveFileById, getNodeById } = useFileSystemContext();
@@ -37,9 +37,9 @@ const MonacoEditor = memo(function MonacoEditor({ fileId }: { fileId?: string | 
         if (!targetFile) return;
         const currentContent = editorRef.current?.getValue?.() ?? files[targetFile] ?? "";
         saveFileById(targetFile, currentContent);
-        setUnsavedFiles(unsavedFiles.filter((f) => f !== targetFile));
+        setUnsavedFiles((prev: string[]) => prev.filter((f) => f !== targetFile));
         ideLog("FILE_SAVE", { fileId: targetFile });
-    }, [files, saveFileById, setUnsavedFiles, targetFile, unsavedFiles]);
+    }, [files, saveFileById, setUnsavedFiles, targetFile]);
 
     const handleMount = useCallback((editor: any, monacoInstance: Monaco) => {
         editorRef.current = editor;
@@ -114,7 +114,7 @@ const MonacoEditor = memo(function MonacoEditor({ fileId }: { fileId?: string | 
         }
     }, [lineToReveal, setLineToReveal]);
 
-    if (!targetFile) return null;
+    if (!mounted || !targetFile) return null;
     if (!fsNode || fsNode.type !== "file") return null;
 
     return (
@@ -127,12 +127,14 @@ const MonacoEditor = memo(function MonacoEditor({ fileId }: { fileId?: string | 
                 defaultValue=""
                 onChange={(value) => {
                     const nextValue = value || "";
-                    if (files[targetFile] !== nextValue) {
-                        setFiles({ ...files, [targetFile]: nextValue });
-                    }
-                    if (!unsavedFiles.includes(targetFile)) {
-                        setUnsavedFiles([...unsavedFiles, targetFile]);
-                    }
+                    setFiles((prev: Record<string, string>) => {
+                        if (prev[targetFile] === nextValue) return prev;
+                        return { ...prev, [targetFile]: nextValue };
+                    });
+                    setUnsavedFiles((prev: string[]) => {
+                        if (prev.includes(targetFile)) return prev;
+                        return [...prev, targetFile];
+                    });
                 }}
                 options={{
                     fontSize: 14,

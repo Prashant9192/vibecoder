@@ -96,42 +96,7 @@ export function ProblemsPanel({ onClose }: ProblemsPanelProps) {
   };
 
   return (
-    <div className="h-56 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col flex-shrink-0">
-      {/* Tab-style header */}
-      <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 h-8 flex-shrink-0">
-        <div className="flex items-center gap-3 h-full">
-          <span className="text-[11px] tracking-wider uppercase font-semibold text-zinc-900 dark:text-zinc-100 border-b-2 border-zinc-900 dark:border-zinc-100 h-full flex items-center">
-            Problems
-          </span>
-          <div className="flex items-center gap-2 text-[11px]">
-            {errorCount > 0 && (
-              <span className="flex items-center gap-1 text-red-500">
-                <AlertCircle size={12} />
-                {errorCount}
-              </span>
-            )}
-            {warningCount > 0 && (
-              <span className="flex items-center gap-1 text-amber-500">
-                <AlertTriangle size={12} />
-                {warningCount}
-              </span>
-            )}
-            {errorCount === 0 && warningCount === 0 && (
-              <span className="flex items-center gap-1 text-emerald-500">
-                <CheckCircle2 size={12} />
-                No problems
-              </span>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors p-0.5 rounded"
-        >
-          <X size={14} />
-        </button>
-      </div>
-
+    <div className="h-full bg-white dark:bg-zinc-950 flex flex-col overflow-hidden">
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {problems.length === 0 ? (

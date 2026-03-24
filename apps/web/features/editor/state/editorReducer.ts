@@ -46,6 +46,10 @@ export type EditorAction =
   | {
       type: "SWITCH_TAB";
       payload: { fileId: string; group: "left" | "right" };
+    }
+  | {
+      type: "DELETE_PATH";
+      payload: { path: string; ids: string[] };
     };
 
 export const initialEditorLayoutState: EditorLayoutState = {
@@ -177,6 +181,44 @@ export function editorReducer(
       return {
         ...state,
         isSplitView: action.payload.isSplitView,
+      };
+    }
+
+    case "DELETE_PATH": {
+      const { ids } = action.payload;
+      const nextGroups = { ...state.editorGroups };
+
+      (["left", "right"] as const).forEach((group) => {
+        const groupState = nextGroups[group];
+        // Remove any tab whose ID is in the 'ids' list
+        const remainingTabs = groupState.tabs.filter(
+          (t) => !ids.includes(t)
+        );
+
+        if (remainingTabs.length !== groupState.tabs.length) {
+          let activeFile = groupState.activeFile;
+          // If active file was in the deleted list
+          if (activeFile && ids.includes(activeFile)) {
+            if (remainingTabs.length === 0) {
+              activeFile = null;
+            } else {
+              const closedIndex = groupState.tabs.indexOf(activeFile);
+              const newActiveIndex = closedIndex > 0 ? closedIndex - 1 : 0;
+              activeFile = remainingTabs[newActiveIndex] ?? null;
+            }
+          }
+
+          nextGroups[group] = {
+            ...groupState,
+            tabs: remainingTabs,
+            activeFile,
+          };
+        }
+      });
+
+      return {
+        ...state,
+        editorGroups: nextGroups,
       };
     }
 

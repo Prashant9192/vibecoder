@@ -23,9 +23,9 @@ const TerminalPanel = dynamic(() => import("@/features/terminal/components/Termi
 const WorkspaceLayout = memo(function WorkspaceLayout() {
   const [explorerWidth, setExplorerWidth] = useState(260);
   const [isSearchOpen, setSearchOpen] = useState(false);
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(false);
   const [bottomTab, setBottomTab] = useState<"terminal" | "problems">("terminal");
-  const [activePanel, setActivePanel] = useState<"explorer" | "git">("explorer");
+  const [activePanel, setActivePanel] = useState<"explorer" | "git" | null>("explorer");
   const isDragging = useRef(false);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -77,7 +77,7 @@ const WorkspaceLayout = memo(function WorkspaceLayout() {
       // Ctrl + ` (backtick)
       if ((e.ctrlKey || e.metaKey) && e.key === "`") {
         e.preventDefault();
-        setIsTerminalOpen((prev) => {
+        setIsBottomPanelOpen((prev) => {
           const next = !prev;
           ideLog("TERMINAL_TOGGLE", { open: next, source: "shortcut" });
           return next;
@@ -89,13 +89,13 @@ const WorkspaceLayout = memo(function WorkspaceLayout() {
   }, []);
 
   const handleSearchClick = useCallback(() => setSearchOpen(true), []);
-  const handleGitClick = useCallback(() => setActivePanel((p) => (p === "git" ? "explorer" : "git")), []);
-  const handleExplorerClick = useCallback(() => setActivePanel("explorer"), []);
+  const handleGitClick = useCallback(() => setActivePanel((p) => (p === "git" ? null : "git")), []);
+  const handleExplorerClick = useCallback(() => setActivePanel((p) => (p === "explorer" ? null : "explorer")), []);
   const handleTerminalTabClick = useCallback(() => setBottomTab("terminal"), []);
   const handleProblemsTabClick = useCallback(() => setBottomTab("problems"), []);
   const handleCloseBottomPanel = useCallback(() => {
     ideLog("TERMINAL_TOGGLE", { open: false, source: "button" });
-    setIsTerminalOpen(false);
+    setIsBottomPanelOpen(false);
   }, []);
 
   return (
@@ -110,26 +110,30 @@ const WorkspaceLayout = memo(function WorkspaceLayout() {
                 onExplorerClick={handleExplorerClick}
                 activePanel={activePanel}
               />
-              {activePanel === "explorer" && <Explorer width={explorerWidth} />}
-              {activePanel === "git" && (
-                <div style={{ width: explorerWidth, flexShrink: 0 }} className="flex flex-col h-full border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
-                  <GitPanel />
-                </div>
+              {activePanel && (
+                <>
+                  {activePanel === "explorer" && <Explorer width={explorerWidth} />}
+                  {activePanel === "git" && (
+                    <div style={{ width: explorerWidth, flexShrink: 0 }} className="flex flex-col h-full border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                      <GitPanel />
+                    </div>
+                  )}
+                  <div 
+                    className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 shrink-0"
+                    onMouseDown={startResizing}
+                  />
+                </>
               )}
-              <div 
-                className="w-1 cursor-col-resize bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors z-10 shrink-0"
-                onMouseDown={startResizing}
-              />
               <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
                 <div className="flex flex-1 min-h-0">
                   <EditorArea />
                   <ChatPanel />
                 </div>
                 {/* Bottom panel: shared tabs header + panel body */}
-                {isTerminalOpen && (
+                {isBottomPanelOpen && (
                   <div className="flex flex-col shrink-0">
                     {/* Tab bar */}
-                    <div className="flex items-center h-8 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 gap-1">
+                    <div className="flex items-center h-8 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 gap-1 overflow-hidden">
                       <button
                         onClick={handleTerminalTabClick}
                         className={`px-3 h-full text-[11px] tracking-wide font-medium border-b-2 transition-colors ${
@@ -151,7 +155,7 @@ const WorkspaceLayout = memo(function WorkspaceLayout() {
                         Problems
                       </button>
                       <button
-                      onClick={handleCloseBottomPanel}
+                        onClick={handleCloseBottomPanel}
                         className="ml-auto text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs px-1"
                         title="Close panel"
                       >
@@ -159,11 +163,14 @@ const WorkspaceLayout = memo(function WorkspaceLayout() {
                       </button>
                     </div>
                     {/* Panel body */}
-                    {bottomTab === "terminal" && <TerminalPanel onClose={() => setIsTerminalOpen(false)} />}
-                    {bottomTab === "problems" && <ProblemsPanel onClose={() => setIsTerminalOpen(false)} />}
+                    <div className="h-64 flex flex-col overflow-hidden">
+                       {bottomTab === "terminal" && <TerminalPanel onClose={handleCloseBottomPanel} />}
+                       {bottomTab === "problems" && <ProblemsPanel onClose={handleCloseBottomPanel} />}
+                    </div>
                   </div>
                 )}
               </div>
+
             </div>
             <StatusBar />
             <CommandPalette />

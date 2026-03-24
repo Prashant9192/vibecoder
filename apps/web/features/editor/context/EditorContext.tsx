@@ -20,11 +20,13 @@ interface EditorContextType {
     setActiveFile: (file: string | null, group?: "left" | "right") => void;
     setTabs: (tabs: string[], group: "left" | "right") => void;
     setIsSplitView: (split: boolean) => void;
-    setFiles: (files: Record<string, string>) => void;
-    setUnsavedFiles: (files: string[]) => void;
+    setFiles: (files: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+    setUnsavedFiles: (files: string[] | ((prev: string[]) => string[])) => void;
     setCursorPosition: (pos: { lineNumber: number, column: number } | null) => void;
     setLineToReveal: (line: number | null) => void;
     setActiveGroup: (group: "left" | "right") => void;
+    deletePath: (path: string, ids: string[]) => void;
+    closeTab: (fileId: string, group: "left" | "right") => void;
     // Helper to gracefully open a file
     openFile: (file: string, group?: "left" | "right") => void;
 }
@@ -40,25 +42,42 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const { editorGroups, activeGroup, isSplitView } = editorState;
 
     // Editor buffers and unsaved flags are keyed by stable fileId (not path)
-    const [files, setFilesInternal] = useState<Record<string, string>>(() => storage.get("editor_buffers", {}));
-    const [unsavedFiles, setUnsavedFilesInternal] = useState<string[]>(() => storage.get("unsaved_files", []));
-    const [recentFiles, setRecentFilesInternal] = useState<string[]>(() => storage.get("recent_files", []));
+    const [files, setFilesInternal] = useState<Record<string, string>>({});
+    const [unsavedFiles, setUnsavedFilesInternal] = useState<string[]>([]);
+    const [recentFiles, setRecentFilesInternal] = useState<string[]>([]);
     const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number, column: number } | null>(null);
     const [lineToReveal, setLineToReveal] = useState<number | null>(null);
+    const [mounted, setMounted] = useState(false);
 
-    const setFiles = useCallback((nextFiles: Record<string, string>) => {
-        setFilesInternal(nextFiles);
-        storage.set("editor_buffers", nextFiles);
+    useEffect(() => {
+        setFilesInternal(storage.get("editor_buffers", {}));
+        setUnsavedFilesInternal(storage.get("unsaved_files", []));
+        setRecentFilesInternal(storage.get("recent_files", []));
+        setMounted(true);
     }, []);
 
-    const setUnsavedFiles = useCallback((nextUnsaved: string[]) => {
-        setUnsavedFilesInternal(nextUnsaved);
-        storage.set("unsaved_files", nextUnsaved);
+    const setFiles = useCallback((nextFiles: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => {
+        setFilesInternal(prev => {
+            const next = typeof nextFiles === 'function' ? nextFiles(prev) : nextFiles;
+            storage.set("editor_buffers", next);
+            return next;
+        });
     }, []);
 
-    const setRecentFiles = useCallback((nextRecent: string[]) => {
-        setRecentFilesInternal(nextRecent);
-        storage.set("recent_files", nextRecent);
+    const setUnsavedFiles = useCallback((nextUnsaved: string[] | ((prev: string[]) => string[])) => {
+        setUnsavedFilesInternal(prev => {
+            const next = typeof nextUnsaved === 'function' ? nextUnsaved(prev) : nextUnsaved;
+            storage.set("unsaved_files", next);
+            return next;
+        });
+    }, []);
+
+    const setRecentFiles = useCallback((nextRecent: string[] | ((prev: string[]) => string[])) => {
+        setRecentFilesInternal(prev => {
+            const next = typeof nextRecent === 'function' ? nextRecent(prev) : nextRecent;
+            storage.set("recent_files", next);
+            return next;
+        });
     }, []);
 
     const syncLayout = (nextState: EditorLayoutState) => {
@@ -118,6 +137,19 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         ideEventBus.emit("EDITOR_SPLIT", { isSplitView: split });
     }, [editorState]);
 
+    const closeTab = useCallback(
+        (fileId: string, group: "left" | "right") => {
+            const nextLayout = editorReducer(editorState, {
+                type: "CLOSE_TAB",
+                payload: { fileId, group },
+            });
+            dispatch({ type: "CLOSE_TAB", payload: { fileId, group } });
+            syncLayout(nextLayout);
+            ideLog("TAB_CLOSE", { fileId, group });
+        },
+        [editorState]
+    );
+
     const openFile = useCallback(
         (fileId: string, group?: "left" | "right") => {
             const targetGroup = group || activeGroup;
@@ -136,6 +168,41 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
             ideEventBus.emit("FILE_OPEN", { fileId, group: targetGroup });
         },
         [activeGroup, editorState, recentFiles, setRecentFiles]
+    );
+
+    const deletePath = useCallback(
+        (path: string, ids: string[]) => {
+            const nextLayout = editorReducer(editorState, {
+                type: "DELETE_PATH",
+                payload: { path, ids },
+            });
+            dispatch({ type: "DELETE_PATH", payload: { path, ids } });
+            syncLayout(nextLayout);
+
+            // Clean up internal buffers and lists that match the IDs
+            const nextFiles = { ...files };
+            let changed = false;
+            ids.forEach((id) => {
+                if (nextFiles[id]) {
+                    delete nextFiles[id];
+                    changed = true;
+                }
+            });
+            if (changed) setFiles(nextFiles);
+
+            const nextUnsaved = unsavedFiles.filter(
+                (id) => !ids.includes(id)
+            );
+            if (nextUnsaved.length !== unsavedFiles.length) setUnsavedFiles(nextUnsaved);
+
+            const nextRecent = recentFiles.filter(
+                (id) => !ids.includes(id)
+            );
+            if (nextRecent.length !== recentFiles.length) setRecentFiles(nextRecent);
+
+            ideLog("PATH_DELETE", { path, ids });
+        },
+        [editorState, files, recentFiles, setFiles, setRecentFiles, setUnsavedFiles, unsavedFiles]
     );
 
     return (
@@ -157,6 +224,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
                 setCursorPosition,
                 setLineToReveal,
                 setActiveGroup,
+                deletePath,
+                closeTab,
                 openFile
             }}
         >

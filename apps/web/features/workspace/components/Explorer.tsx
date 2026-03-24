@@ -33,7 +33,7 @@ const Explorer = memo(function Explorer({ width = 256 }: { width?: number }) {
     getNodeById,
     getNodeByPath,
   } = useFileSystemContext();
-  const { editorGroups, activeGroup, openFile, files, setFiles, setIsSplitView, setTabs, setActiveFile } = useEditor();
+  const { editorGroups, activeGroup, openFile, files, setFiles, deletePath, setIsSplitView } = useEditor();
   const activeFile = editorGroups?.[activeGroup]?.activeFile ?? null;
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [creatingNode, setCreatingNode] = useState<{ parentPath: string, type: "file" | "folder" } | null>(null);
@@ -169,28 +169,24 @@ const Explorer = memo(function Explorer({ width = 256 }: { width?: number }) {
     const confirmDelete = window.confirm(`Are you sure you want to delete ${fileName}?`);
 
     if (confirmDelete) {
-      deleteFileById(nodeId);
+      const node = getNodeById(nodeId);
+      if (!node) return;
 
-      // Clean up tabs in BOTH editor groups
-      (["left", "right"] as const).forEach((grp) => {
-        const grpData = editorGroups[grp];
-        if (!grpData) return;
-        const newTabs = grpData.tabs.filter((t) => t !== nodeId);
-        if (newTabs.length !== grpData.tabs.length) {
-          setTabs(newTabs, grp);
-          if (grpData.activeFile === nodeId) {
-            setActiveFile(newTabs.length > 0 ? newTabs[newTabs.length - 1] : null, grp);
-          }
+      const collectIds = (n: FileNode): string[] => {
+        let ids = [n.id];
+        if (n.type === "folder" && n.children) {
+          n.children.forEach(child => {
+            ids = [...ids, ...collectIds(child)];
+          });
         }
-      });
+        return ids;
+      };
 
-      if (files[nodeId] !== undefined) {
-        const updated = { ...files };
-        delete updated[nodeId];
-        setFiles(updated);
-      }
+      const idsToDelete = collectIds(node);
+      deleteFileById(nodeId);
+      deletePath(node.path, idsToDelete);
     }
-  }, [editorGroups, files, setActiveFile, setTabs, setFiles, deleteFileById]);
+  }, [deleteFileById, deletePath, getNodeById]);
 
   const handleMove = useCallback((e: React.MouseEvent, nodeId: string, fileName: string) => {
     e.stopPropagation();
